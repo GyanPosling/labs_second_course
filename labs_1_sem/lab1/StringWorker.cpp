@@ -1,132 +1,88 @@
 #include "StringWorker.h"
-#include <iostream>
-#include <cstring>
-#include <cctype>
 
-using namespace std;
+StringWorker::StringWorker() : data1(nullptr), data2(nullptr) {}
 
-// Конструктор без параметров
-StringWorker::StringWorker() : data(nullptr), length(0) {}
-
-// Конструктор с C-строкой
-StringWorker::StringWorker(const char* data) {
-    if (data) {
-        this->length = strlen(data);
-        this->data = new char[this->length + 1];
-        strcpy(this->data, data);
-    } else {
-        this->length = 0;
-        this->data = nullptr;
-    }
+StringWorker::StringWorker(const char* d1, const char* d2) {
+    data1 = d1 ? new char[strlen(d1) + 1] : nullptr;
+    data2 = d2 ? new char[strlen(d2) + 1] : nullptr;
+    if (data1) strcpy(data1, d1);
+    if (data2) strcpy(data2, d2);
 }
 
-// Конструктор с данными и длиной
-StringWorker::StringWorker(const char* data, int length) {
-    if (data && length > 0) {
-        this->length = length;
-        this->data = new char[this->length + 1];
-        strncpy(this->data, data, length);
-        this->data[length] = '\0';
-    } else {
-        this->length = 0;
-        this->data = nullptr;
-    }
+StringWorker::StringWorker(const StringWorker& other) {
+    data1 = other.data1 ? new char[strlen(other.data1) + 1] : nullptr;
+    data2 = other.data2 ? new char[strlen(other.data2) + 1] : nullptr;
+    if (data1) strcpy(data1, other.data1);
+    if (data2) strcpy(data2, other.data2);
 }
 
-// Конструктор копирования
-StringWorker::StringWorker(const StringWorker& stringCopy) {
-    if (stringCopy.data) {
-        this->length = stringCopy.length;
-        this->data = new char[this->length + 1];
-        strcpy(this->data, stringCopy.data);
-    } else {
-        this->length = 0;
-        this->data = nullptr;
+StringWorker& StringWorker::operator=(const StringWorker& other) {
+    if (this != &other) {
+        clearStrings();
+        data1 = other.data1 ? new char[strlen(other.data1) + 1] : nullptr;
+        data2 = other.data2 ? new char[strlen(other.data2) + 1] : nullptr;
+        if (data1) strcpy(data1, other.data1);
+        if (data2) strcpy(data2, other.data2);
     }
+    return *this;
 }
 
-// Деструктор
 StringWorker::~StringWorker() {
-    delete[] data;
+    clearStrings();
 }
 
-// Метод ввода данных
-void StringWorker::initString() {
-    cout << "Введите строку: ";
-    
-    // Временный буфер для ввода
-    const int BUFFER_SIZE = 1000;
-    char buffer[BUFFER_SIZE];
-    cin.getline(buffer, BUFFER_SIZE);
-    
-    // Освобождаем старую память
-    delete[] data;
-    
-    // Выделяем новую память
-    length = strlen(buffer);
-    data = new char[length + 1];
-    strcpy(data, buffer);
+const char* StringWorker::getFirstData() const { return data1; }
+const char* StringWorker::getSecondData() const { return data2; }
+int StringWorker::getFirstLength() const { return data1 ? strlen(data1) : 0; }
+int StringWorker::getSecondLength() const { return data2 ? strlen(data2) : 0; }
+
+void StringWorker::setFirstString(const char* d) {
+    delete[] data1;
+    data1 = d ? new char[strlen(d) + 1] : nullptr;
+    if (data1) strcpy(data1, d);
 }
 
-// Получение данных
-const char* StringWorker::getData() const {
-    return data;
+void StringWorker::setSecondString(const char* d) {
+    delete[] data2;
+    data2 = d ? new char[strlen(d) + 1] : nullptr;
+    if (data2) strcpy(data2, d);
 }
 
-// Получение длины
-int StringWorker::getLength() const {
-    return length;
+bool StringWorker::isEmpty() const {
+    return (!data1 || !*data1) && (!data2 || !*data2);
 }
 
-// Вывод строки на экран
-void StringWorker::showString() const {
-    if (data) {
-        cout << data;
-    }
-    cout << endl;
+void StringWorker::printStrings() const {
+    std::cout << "First: " << (data1 ? data1 : "") << "\n";
+    std::cout << "Second: " << (data2 ? data2 : "") << "\n";
 }
 
-// Функция пересечения строк
-StringWorker StringWorker::getIntersection(const StringWorker& string1, const StringWorker& string2) {
-    if (!string1.data || !string2.data) {
-        return StringWorker();
-    }
-    
-    // Временный буфер для результата
-    char result[1000] = {0};
-    int resultIndex = 0;
-    
-    const char* str1 = string1.data;
-    const char* str2 = string2.data;
-    
-    // Проходим по всем символам первой строки
-    for (int i = 0; i < string1.length; i++) {
-        char currentChar = str1[i];
-        
-        // Проверяем, есть ли символ во второй строке и еще не добавлен в результат
-        bool foundInSecond = false;
-        for (int j = 0; j < string2.length; j++) {
-            if (str2[j] == currentChar) {
-                foundInSecond = true;
+void StringWorker::clearStrings() {
+    delete[] data1;
+    delete[] data2;
+    data1 = nullptr;
+    data2 = nullptr;
+}
+
+char* StringWorker::getIntersection() const {
+    if (!data1 || !data2) return nullptr;
+    char* result = new char[strlen(data1) + 1];
+    int k = 0;
+    for (int i = 0; data1[i]; i++) {
+        for (int j = 0; data2[j]; j++) {
+            if (data1[i] == data2[j]) {
+                bool exists = false;
+                for (int m = 0; m < k; m++) {
+                    if (result[m] == data1[i]) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) result[k++] = data1[i];
                 break;
             }
         }
-        
-        // Проверяем, не добавлен ли уже этот символ в результат
-        bool alreadyAdded = false;
-        for (int k = 0; k < resultIndex; k++) {
-            if (result[k] == currentChar) {
-                alreadyAdded = true;
-                break;
-            }
-        }
-        
-        if (foundInSecond && !alreadyAdded) {
-            result[resultIndex++] = currentChar;
-        }
     }
-    
-    result[resultIndex] = '\0';
-    
-    return StringWorker(result);
+    result[k] = '\0';
+    return result;
 }
