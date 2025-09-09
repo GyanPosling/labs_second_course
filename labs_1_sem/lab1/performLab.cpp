@@ -1,79 +1,188 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <iostream>
+#include <cstdlib>
+#include <cstring>
 #include "performLab.h"
 #include "StringWorker.h"
 
+
+using namespace std;
+
+
+void printLabHeader() {
+    std::cout <<  "\n+---------------------------------------------------------+\n"
+                    "|                                                         |\n"
+                    "|               Лабораторная работа №1                    |\n"
+                    "|                                                         |\n"
+                    "|               Тема: Классы и объекты                    |\n"
+                    "|                                                         |\n"
+                    "|  Задача: Реализовать класс, выполняющий пересчение строк|\n"
+                    "|                                                         |\n"
+                    "|   Код выполняет все требования:                         |\n"
+                    "|     - Деление программы на заголовочные файлы           |\n"
+                    "|     - Каждый класс в отдельном .h и .cpp файле          |\n"
+                    "|     - Отдельный .cpp файл для main                      |\n"
+                    "|                                                         |\n"
+                    "|   Автор: Бурш Антон                                     |\n"
+                    "|                                                         |\n"
+                    "+---------------------------------------------------------+\n";
+
+}
+
 char* initString(const char* prompt) {
-    printf("%s", prompt);
+    cout << prompt;
     char buffer[1024];
-    if (!fgets(buffer, sizeof(buffer), stdin)) return NULL;
-    buffer[strcspn(buffer, "\n")] = 0;
-    char* result = (char*)malloc(strlen(buffer) + 1);
+    if (!cin.getline(buffer, sizeof(buffer))) return nullptr;
+    char* result = new char[strlen(buffer) + 1];
     strcpy(result, buffer);
     return result;
 }
 
-int getValidInput(int min, int max) {
-    int num;
-    char symbol;
-    while (1) {
-        char buffer[100];
-        if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("Error reading input!\nTry again: ");
+char getValidInput(char min, char max) {
+    string input;
+    while (true) {
+        getline(cin, input);
+        
+        if (input.length() != 1) {
+            cout << "Error! Enter exactly ONE character.\nTry again: ";
             continue;
         }
-        if (sscanf(buffer, "%d %c", &num, &symbol) != 1) {
-            printf("Invalid input! Please enter a number.\nTry again: ");
+        
+        if (input[0] < min || input[0] > max) {
+            cout << "Error! Character must be between '" 
+                 << min << "' and '" << max << "'.\nTry again: ";
             continue;
         }
-        if (num < min || num > max) {
-            printf("The number is not within the range [%d, %d]!\nTry again: ", min, max);
-            continue;
-        }
-        return num;
+        
+        return input[0];
     }
 }
 
 void drawMenu() {
-    printf("\n+---------------------------+\n");
-    printf("| 1. Print strings          |\n");
-    printf("| 2. Get intersection       |\n");
-    printf("| 3. Clear and re-enter     |\n");
-    printf("| 0. Exit                   |\n");
-    printf("+---------------------------+\n");
-    printf("Your choice: ");
+
+    cout << "\n+---------------------------+\n";
+    cout << "| 1. Print strings          |\n";
+    cout << "| 2. Get intersection       |\n";
+    cout << "| 3. Clear and re-enter     |\n";
+    cout << "| 0. Exit                   |\n";
+    cout << "+---------------------------+\n";
+    cout << "Your choice: ";
 }
 
 void performTask() {
+
+    printLabHeader();
     char* d1 = initString("Enter first string: ");
     char* d2 = initString("Enter second string: ");
     StringWorker worker(d1, d2);
-    free(d1);
-    free(d2);
+    delete[] d1;
+    delete[] d2;
 
-    int choice;
+    char choice;
     do {
         drawMenu();
-        choice = getValidInput(0, 3);
-        if (choice == 1) {
+        choice = getValidInput('0', '3');
+        if (choice == '1') {
             worker.printStrings();
-        } else if (choice == 2) {
+        } else if (choice == '2') {
             char* inter = worker.getIntersection();
             if (inter) {
-                printf("Intersection: %s\n", inter);
+                cout << "Intersection: " << inter << endl;
                 delete[] inter;
             } else {
-                printf("No intersection.\n");
+                cout << "No intersection." << endl;
             }
-        } else if (choice == 3) {
+        } else if (choice == '3') {
             worker.clearStrings();
             d1 = initString("Enter first string: ");
             d2 = initString("Enter second string: ");
             worker.setFirstString(d1);
             worker.setSecondString(d2);
-            free(d1);
-            free(d2);
+            delete[] d1;
+            delete[] d2;
         }
-    } while (choice != 0);
+    } while (choice != '0');
 }
+
+// ---------------------------------------------------------------------------------------------
+
+//!!!!! ПРИМЕР С ИСПОЛЬЗОВАНИЕМ КОНСТРУКТОРА ПО УМОЛЧАНИЮ
+
+// void performTaskWithDefaultConstructor() {
+//     printLabHeader();
+//     StringWorker worker;
+    
+//     char* d1 = initString("Enter first string: ");
+//     char* d2 = initString("Enter second string: ");
+    
+//     worker.setFirstString(d1);
+//     worker.setSecondString(d2);
+//     delete[] d1;
+//     delete[] d2;
+
+//     char choice;
+//     do {
+//         drawMenu();
+//         choice = getValidInput('0', '3');
+//         if (choice == '1') {
+//             worker.printStrings();
+//         } else if (choice == '2') {
+//             char* inter = worker.getIntersection();
+//             if (inter) {
+//                 cout << "Intersection: " << inter << endl;
+//                 delete[] inter;
+//             } else {
+//                 cout << "No intersection." << endl;
+//             }
+//         } else if (choice == '3') {
+//             worker.clearStrings();
+//             d1 = initString("Enter first string: ");
+//             d2 = initString("Enter second string: ");
+//             worker.setFirstString(d1);
+//             worker.setSecondString(d2);
+//             delete[] d1;
+//             delete[] d2;
+//         }
+//     } while (choice != '0');
+// }
+
+// --------------------------------------------------------------------------------------------------------
+
+
+// !!! ПРИМЕР С ИСПОЛЬЗОВАНИЕМ КОСТРУКТОРА КОПИРОВАНИЯ
+
+// void performTaskWithCopyConstructor() {
+//     printLabHeader();
+//     char* d1 = initString("Enter first string: ");
+//     char* d2 = initString("Enter second string: ");
+    
+//     StringWorker original(d1, d2);
+//     delete[] d1;
+//     delete[] d2;
+
+//     StringWorker worker(original);
+
+//     char choice;
+//     do {
+//         drawMenu();
+//         choice = getValidInput('0', '3');
+//         if (choice == '1') {
+//             worker.printStrings();
+//         } else if (choice == '2') {
+//             char* inter = worker.getIntersection();
+//             if (inter) {
+//                 cout << "Intersection: " << inter << endl;
+//                 delete[] inter;
+//             } else {
+//                 cout << "No intersection." << endl;
+//             }
+//         } else if (choice == '3') {
+//             worker.clearStrings();
+//             d1 = initString("Enter first string: ");
+//             d2 = initString("Enter second string: ");
+//             worker.setFirstString(d1);
+//             worker.setSecondString(d2);
+//             delete[] d1;
+//             delete[] d2;
+//         }
+//     } while (choice != '0');
+// }
