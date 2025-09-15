@@ -8,23 +8,26 @@ private:
     char* data2;
 
 public:
-    StringWorker();
-    StringWorker(const char* data1, const char* data2);
-    StringWorker(const StringWorker& other);
-    StringWorker& operator=(const StringWorker& other);
-    ~StringWorker();
+    StringWorker(); //контруктор по умолчанию
+    StringWorker(const char* data1, const char* data2);// конструктор с двумя параметрами
+    StringWorker(const StringWorker& other);// конструктор копирования
+    StringWorker& operator=(const StringWorker& other);// переопределение оператора = 
+    ~StringWorker(); // деструктор
 
+    //геттеры
     const char* getFirstData() const;
     const char* getSecondData() const;
     int getFirstLength() const;
     int getSecondLength() const;
 
+    //сеттеры
     void setFirstString(const char* data);
     void setSecondString(const char* data);
 
-    bool isEmpty() const;
+    short isEmpty() const;
     void printStrings() const;
     void clearStrings();
 
+    //функция пересечния строк
     char* getIntersection() const;
 };

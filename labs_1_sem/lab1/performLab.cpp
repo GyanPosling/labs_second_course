@@ -17,7 +17,7 @@ void printLabHeader() {
                     "|                                                         |\n"
                     "|  Задача: Реализовать класс, выполняющий пересчение строк|\n"
                     "|                                                         |\n"
-                    "|   Код выполняет все требования:                         |\n"
+                    "|   Код должен выполнять следующие условия:               |\n"
                     "|     - Деление программы на заголовочные файлы           |\n"
                     "|     - Каждый класс в отдельном .h и .cpp файле          |\n"
                     "|     - Отдельный .cpp файл для main                      |\n"
@@ -95,8 +95,7 @@ void performTask() {
             worker.clearStrings();
             d1 = initString("Enter first string: ");
             d2 = initString("Enter second string: ");
-            worker.setFirstString(d1);
-            worker.setSecondString(d2);
+            worker = StringWorker (d1, d2);
             delete[] d1;
             delete[] d2;
         }
