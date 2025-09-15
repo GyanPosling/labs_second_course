@@ -7,5 +7,5 @@
     - Каждый класс в отдельном .h и .cpp файле          
     - Отдельный .cpp файл для main
 
-## Отчет по лабе (тут)[https://docs.google.com/document/d/1_W5ijSO8wrJuQu8hZRslc-IVI0VcBPfwnJ2F-ji-79k/edit?tab=t.0]
+## Отчет по лабе [тут](https://docs.google.com/document/d/1_W5ijSO8wrJuQu8hZRslc-IVI0VcBPfwnJ2F-ji-79k/edit?tab=t.0)
 
