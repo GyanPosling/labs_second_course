@@ -7,27 +7,6 @@
 
 using namespace std;
 
-
-void printLabHeader() {
-    std::cout <<  "\n+---------------------------------------------------------+\n"
-                    "|                                                         |\n"
-                    "|               Лабораторная работа №1                    |\n"
-                    "|                                                         |\n"
-                    "|               Тема: Классы и объекты                    |\n"
-                    "|                                                         |\n"
-                    "|  Задача: Реализовать класс, выполняющий пересчение строк|\n"
-                    "|                                                         |\n"
-                    "|   Код должен выполнять следующие условия:               |\n"
-                    "|     - Деление программы на заголовочные файлы           |\n"
-                    "|     - Каждый класс в отдельном .h и .cpp файле          |\n"
-                    "|     - Отдельный .cpp файл для main                      |\n"
-                    "|                                                         |\n"
-                    "|   Автор: Бурш Антон                                     |\n"
-                    "|                                                         |\n"
-                    "+---------------------------------------------------------+\n";
-
-}
-
 char* initString(const char* prompt) {
     cout << prompt;
     char buffer[1024];
@@ -69,8 +48,7 @@ void drawMenu() {
 }
 
 void performTask() {
-
-    printLabHeader();
+    
     char* d1 = initString("Enter first string: ");
     char* d2 = initString("Enter second string: ");
     StringWorker worker(d1, d2);
