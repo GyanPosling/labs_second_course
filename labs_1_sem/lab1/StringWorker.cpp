@@ -74,26 +74,44 @@ void StringWorker::clearStrings() {
 }
 
 char* StringWorker::getIntersection() const {
-    if (!data1 || !data2) return nullptr;
-    char* result = new char[strlen(data1) + 1];
-    int k = 0;
-    for (int i = 0; data1[i]; i++) {
-        for (int j = 0; data2[j]; j++) {
-            if (data1[i] == data2[j]) {
-                short exists = 0;
-                for (int m = 0; m < k; m++) {
-                    if (result[m] == data1[i]) {
-                        exists = 1;
-                        break;
-                    }
-                }
-                if (!exists) result[k++] = data1[i];
+    if (!data1 || !data2 || !*data1 || !*data2) {
+        char* result = new char[1];
+        result[0] = '\0';
+        std::cout << "\"" << data1 << "\"" << " ∩ " << "\"" << data2 << "\"" << " = \"\"\n";
+        return result;
+    }
+
+    int lhs_len = strlen(data1);
+    int rhs_len = strlen(data2);
+
+    short* used = new short[rhs_len];
+    for (int i = 0; i < rhs_len; i++) {
+        used[i] = 0;
+    }
+
+    int count = 0;
+    for (int i = 0; i < lhs_len; i++) {
+        for (int j = 0; j < rhs_len; j++) {
+            if (data1[i] == data2[j] && !used[j]) {
+                count++;
+                used[j] = 1;
                 break;
             }
         }
     }
-    result[k] = '\0';
 
-    std::cout<<"\""<<data1<<"\""<< " ∩ "  <<"\""<<data2<<"\""<< " = " <<"\""<<result<<"\""<< "\n";
+    char* result = new char[count + 1];
+    int index = 0;
+    
+    for (int i = 0; i < rhs_len; i++) {
+        if (used[i]) {
+            result[index++] = data2[i];
+        }
+    }
+    result[index] = '\0';
+
+    std::cout << "\"" << data1 << "\"" << " ∩ " << "\"" << data2 << "\"" << " = \"" << result << "\"\n";
+    
+    delete[] used;
     return result;
 }
