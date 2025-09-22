@@ -72,6 +72,7 @@ void printRestartBox() {
 
 void run() {
     int restart;
+    
     do {
         char choice;
         printMenu();
@@ -89,7 +90,7 @@ void run() {
             restart = 0;
         }
     } while (restart == 1);
-    
+
     cout<<"Exiting...";
 }
 

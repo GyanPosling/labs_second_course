@@ -23,6 +23,7 @@ MyString::MyString(const MyString& other) {
     strcpy(data, other.data);
 }
 
+
 MyString& MyString::operator=(const MyString& other) {
     if (this != &other) {
         delete[] data;
@@ -30,6 +31,7 @@ MyString& MyString::operator=(const MyString& other) {
         data = new char[length + 1];
         strcpy(data, other.data);
     }
+
     return *this;
 }
 
