@@ -1,7 +1,6 @@
 #pragma once
 #include <iostream>
 
-
 class MyString {
 private:
     char* data;
@@ -15,7 +14,7 @@ public:
     MyString& operator=(const MyString& other);
     ~MyString();
 
-    const char* getData() const;
+    //const char* getData() const;
     char* getData();
     int getLength() const;
     bool isEmpty() const;

@@ -12,23 +12,7 @@ char* initString(const char* prompt) {
     return result;
 }
 
-void demonstrateIntersection() {
-    MyString str1("hello");
-    MyString str2("world");
-    MyString str3("loop");
-    
-    cout << "String 1: "; str1.print();
-    cout << "String 2: "; str2.print();
-    cout << "String 3: "; str3.print();
-    
-    MyString result = str1;
-    result.intersectWith(str2).intersectWith(str3);
-    
-    cout << "Intersection: ";
-    result.print();
-}
-
-void interactiveMode() {
+void performIntersection() {
     int count;
     cout << "Enter number of strings: ";
     cin >> count;
@@ -52,16 +36,6 @@ void interactiveMode() {
     delete[] strings;
 }
 
-void printMenu() {
-    cout << "+----------------------------+\n";
-    cout << "|          M E N U           |\n";
-    cout << "+----------------------------+\n";
-    cout << "| 1. Demonstration           |\n";
-    cout << "| 2. Interactive Mode        |\n";
-    cout << "| 0. Exit                    |\n";
-    cout << "+----------------------------+\n";
-    cout << "Choice: ";
-}
 
 void printRestartBox() {
     cout << "+------------------------------+\n";
@@ -70,31 +44,17 @@ void printRestartBox() {
     cout << "Answer: ";
 }
 
-void run() {
-    int restart;
+
+int main() {
+    int restart = 1;
     
     do {
-        char choice;
-        printMenu();
-        cin >> choice;
-        cin.ignore();
-        
-        if (choice == '1') demonstrateIntersection();
-        else if (choice == '2') interactiveMode();
-        
-        if (choice != '0') {
-            printRestartBox();
-            cin >> restart;
-            cin.ignore();
-        } else {
-            restart = 0;
-        }
+        performIntersection();
+        printRestartBox();
+        cin >> restart;
     } while (restart == 1);
 
     cout<<"Exiting...";
-}
-
-int main() {
-    run();
+    
     return 0;
 }

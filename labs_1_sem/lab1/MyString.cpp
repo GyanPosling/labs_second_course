@@ -39,9 +39,9 @@ MyString::~MyString() {
     delete[] data;
 }
 
-const char* MyString::getData() const {
-    return data;
-}
+// const char* MyString::getData() const {
+//     return data;
+// }
 
 char* MyString::getData() { return data; }
 
