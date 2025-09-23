@@ -39,9 +39,10 @@ MyString::~MyString() {
     delete[] data;
 }
 
-// const char* MyString::getData() const {
-//     return data;
-// }
+const char* MyString::getData() const {
+    return data;
+}
+
 
 char* MyString::getData() { return data; }
 
@@ -58,25 +59,25 @@ void MyString::print() const {
     cout << data << endl;
 }
 
+
 MyString& MyString::intersectWith(const MyString& other) {
-    MyString currentString = *this;
-    MyString otherString = other;
-    MyString resultString((currentString.getLength() < otherString.getLength()) ? currentString.getLength() : otherString.getLength());
+
+    MyString resultString((this->getLength() < other.getLength()) ? this->getLength() : other.getLength());
     
     int resultLength = 0;
     
-    for (int i = 0; i < currentString.getLength(); i++) {
-        for (int j = 0; j < otherString.getLength(); j++) {
-            if (currentString.getData()[i] == otherString.getData()[j]) {
+    for (int i = 0; i < this->getLength(); i++) {
+        for (int j = 0; j < other.getLength(); j++) {
+            if (this->getData()[i] == other.getData()[j]) {
                 bool duplicate = false;
                 for (int k = 0; k < resultLength; k++) {
-                    if (resultString.getData()[k] == currentString.getData()[i]) {
+                    if (resultString.getData()[k] == this->getData()[i]) {
                         duplicate = true;
                         break;
                     }
                 }
                 if (!duplicate) {
-                    resultString.getData()[resultLength] = currentString.getData()[i];
+                    resultString.getData()[resultLength] = this->getData()[i];
                     resultLength++;
                 }
                 break;
@@ -85,7 +86,9 @@ MyString& MyString::intersectWith(const MyString& other) {
     }
     
     resultString.getData()[resultLength] = '\0';
-    
+
     *this = resultString;
     return *this;
+
 }
+
