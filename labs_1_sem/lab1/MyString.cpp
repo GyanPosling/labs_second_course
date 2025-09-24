@@ -44,15 +44,13 @@ const char* MyString::getData() const {
 }
 
 
-char* MyString::getData() { return data; }
+char* MyString::getData() {
+     return data; 
+}
 
 
 int MyString::getLength() const {
     return length;
-}
-
-bool MyString::isEmpty() const {
-    return length == 0;
 }
 
 void MyString::print() const {
@@ -69,10 +67,10 @@ MyString& MyString::intersectWith(const MyString& other) {
     for (int i = 0; i < this->getLength(); i++) {
         for (int j = 0; j < other.getLength(); j++) {
             if (this->getData()[i] == other.getData()[j]) {
-                bool duplicate = false;
+                short duplicate = 0;
                 for (int k = 0; k < resultLength; k++) {
                     if (resultString.getData()[k] == this->getData()[i]) {
-                        duplicate = true;
+                        duplicate = 1;
                         break;
                     }
                 }

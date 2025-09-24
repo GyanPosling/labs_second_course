@@ -17,7 +17,6 @@ public:
     const char* getData() const;
     char* getData();
     int getLength() const;
-    bool isEmpty() const;
     void print() const;
     
     MyString& intersectWith(const MyString& other);
