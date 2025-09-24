@@ -23,6 +23,9 @@ public:
     void print() const;
 
     Array& operator&(const Array& other);
+    
+    friend std::ostream& operator<<(std::ostream &os, const Array &array);
+    friend std::istream& operator>>(std::istream &is, Array &array);
 };
 
 #endif 

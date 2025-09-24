@@ -3,20 +3,6 @@
 
 using namespace std;
 
-int* initArray(const char* prompt, int& size) {
-    cout << prompt;
-    cout << "Enter array size: ";
-    cin >> size;
-    
-    int* result = new int[size];
-    cout << "Enter " << size << " elements: ";
-    for (int i = 0; i < size; i++) {
-        cin >> result[i];
-    }
-    cin.ignore();
-    return result;
-}
-
 void performIntersection() {
     int count;
     cout << "Enter number of arrays: ";
@@ -25,10 +11,7 @@ void performIntersection() {
     
     Array* arrays = new Array[count];
     for (int i = 0; i < count; i++) {
-        int size;
-        int* input = initArray("Array initialization: \n", size);
-        arrays[i] = Array(input, size);
-        delete[] input;
+        cin>>arrays[i];
     }
     
     Array result = arrays[0];
@@ -37,7 +20,13 @@ void performIntersection() {
     }
     
     cout << "Intersection: ";
-    result.print();
+    for (int i = 0; i < count; i++) {
+        cout << arrays[i];
+        if (i < count - 1) {
+            cout << " & ";
+        }
+    }
+    cout << " = " << result << endl;
     
     delete[] arrays;
 }
