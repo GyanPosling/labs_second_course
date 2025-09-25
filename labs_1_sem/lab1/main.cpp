@@ -3,14 +3,6 @@
 #include <string.h>
 using namespace std;
 
-char* initString(const char* prompt) {
-    cout << prompt;
-    char buffer[1024];
-    if (!cin.getline(buffer, sizeof(buffer))) return nullptr;
-    char* result = new char[strlen(buffer) + 1];
-    strcpy(result, buffer);
-    return result;
-}
 
 void performIntersection() {
     int count;
@@ -20,18 +12,20 @@ void performIntersection() {
     
     MyString* strings = new MyString[count];
     for (int i = 0; i < count; i++) {
-        char* input = initString("Enter string: ");
-        strings[i] = MyString(input);
-        delete[] input;
+        cout << "String " << i + 1 << ": ";
+        cin >> strings[i];
     }
     
     MyString result = strings[0];
     for (int i = 1; i < count; i++) {
-        result.intersectWith(strings[i]);
+        result = result.intersectWith(strings[i]);
     }
     
-    cout << "Intersection: ";
-    result.print();
+    for (int i = 0; i < count; i++) {
+        cout << strings[i];
+        if (i < count - 1) cout << " & ";
+    }
+    cout << " = " << result << endl;
     
     delete[] strings;
 }
@@ -46,7 +40,7 @@ void printRestartBox() {
 
 
 int main() {
-    int restart = 1;
+    int restart;
     
     do {
         performIntersection();

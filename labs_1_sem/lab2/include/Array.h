@@ -17,11 +17,6 @@ public:
     Array& operator=(const Array& other);
     ~Array();
 
-    const int* getData() const;
-    int* getData();
-    int getSize() const;
-    void print() const;
-
     Array& operator&(const Array& other);
     
     friend std::ostream& operator<<(std::ostream &os, const Array &array);

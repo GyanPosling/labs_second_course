@@ -14,10 +14,10 @@ public:
     MyString& operator=(const MyString& other);
     ~MyString();
 
-    const char* getData() const;
-    char* getData();
-    int getLength() const;
     void print() const;
     
     MyString& intersectWith(const MyString& other);
+
+    friend std::ostream& operator<<(std::ostream& os, const MyString& str);
+    friend std::istream& operator>>(std::istream& is, MyString& str);
 };

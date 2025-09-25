@@ -39,43 +39,25 @@ MyString::~MyString() {
     delete[] data;
 }
 
-const char* MyString::getData() const {
-    return data;
-}
-
-
-char* MyString::getData() {
-     return data; 
-}
-
-
-int MyString::getLength() const {
-    return length;
-}
-
-void MyString::print() const {
-    cout << data << endl;
-}
-
 
 MyString& MyString::intersectWith(const MyString& other) {
 
-    MyString resultString((this->getLength() < other.getLength()) ? this->getLength() : other.getLength());
+    MyString resultString((this->length < other.length) ? this->length : other.length);
     
     int resultLength = 0;
     
-    for (int i = 0; i < this->getLength(); i++) {
-        for (int j = 0; j < other.getLength(); j++) {
-            if (this->getData()[i] == other.getData()[j]) {
+    for (int i = 0; i < this->length; i++) {
+        for (int j = 0; j < other.length; j++) {
+            if (this->data[i] == other.data[j]) {
                 short duplicate = 0;
                 for (int k = 0; k < resultLength; k++) {
-                    if (resultString.getData()[k] == this->getData()[i]) {
+                    if (resultString.data[k] == this->data[i]) {
                         duplicate = 1;
                         break;
                     }
                 }
                 if (!duplicate) {
-                    resultString.getData()[resultLength] = this->getData()[i];
+                    resultString.data[resultLength] = this->data[i];
                     resultLength++;
                 }
                 break;
@@ -83,10 +65,44 @@ MyString& MyString::intersectWith(const MyString& other) {
         }
     }
     
-    resultString.getData()[resultLength] = '\0';
+    resultString.data[resultLength] = '\0';
 
     *this = resultString;
     return *this;
 
+}
+
+std::ostream& operator<<(std::ostream& os, const MyString& str) {
+    if (str.data != nullptr) {
+        os <<"'"<< str.data<< "'";
+    }
+    return os;
+}
+
+std::istream& operator>>(std::istream& is, MyString& str) {
+    char ch;
+    int capacity = 10;
+    int size = 0;
+    char* buffer = new char[capacity];
+    
+    while (is.get(ch) && ch != '\n') {
+        if (size >= capacity - 1) {
+            capacity *= 2;
+            char* newBuffer = new char[capacity];
+            strcpy(newBuffer, buffer);
+            delete[] buffer;
+            buffer = newBuffer;
+        }
+        buffer[size++] = ch;
+    }
+    buffer[size] = '\0';
+    
+    delete[] str.data;
+    str.length = size;
+    str.data = new char[str.length + 1];
+    strcpy(str.data, buffer);
+    
+    delete[] buffer;
+    return is;
 }
 

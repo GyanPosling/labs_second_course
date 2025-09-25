@@ -42,45 +42,23 @@ Array::~Array() {
     delete[] data;
 }
 
-const int* Array::getData() const {
-    return data;
-}
-
-int* Array::getData() {
-    return data; 
-}
-
-int Array::getSize() const {
-    return size;
-}
-
-void Array::print() const {
-    cout << "[";
-    for (int i = 0; i < size; i++) {
-        cout << data[i];
-        if (i < size - 1) cout << ", ";
-    }
-    cout << "]" << endl;
-}
-
 Array& Array::operator&(const Array& other) {
-    Array tempArray((this->size < other.getSize()) ? this->size : other.getSize());
+    Array tempArray((this->size < other.size) ? this->size : other.size);
 
     int resultSize = 0;
     
-    
     for (int i = 0; i < this->size; i++) {
-        for (int j = 0; j < other.getSize(); j++) {
-            if (this->data[i] == other.getData()[j]) {
+        for (int j = 0; j < other.size; j++) {
+            if (this->data[i] == other.data[j]) {
                 bool duplicate = false;
                 for (int k = 0; k < resultSize; k++) {
-                    if (tempArray.getData()[k] == this->data[i]) {
+                    if (tempArray.data[k] == this->data[i]) {
                         duplicate = true;
                         break;
                     }
                 }
                 if (!duplicate) {
-                    tempArray.getData()[resultSize++] = this->data[i];
+                    tempArray.data[resultSize++] = this->data[i];
                 }
                 break;
             }
@@ -89,7 +67,7 @@ Array& Array::operator&(const Array& other) {
     
     Array resultArray(resultSize);
     for (int i = 0; i < resultSize; i++) {
-        resultArray.getData()[i] = tempArray.getData()[i];
+        resultArray.data[i] = tempArray.data[i];
     }
 
     *this = resultArray;
@@ -133,6 +111,5 @@ std::istream& operator>>(std::istream &is, Array &array){
     }
 
     return is;
-
 }
 
