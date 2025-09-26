@@ -2,28 +2,6 @@
 #include <cstring>
 using namespace std;
 
-MyString::MyString() : data(nullptr), length(0) {}
-
-MyString::MyString(const char* str) {
-    length = strlen(str);
-    data = new char[length + 1];
-    strcpy(data, str);
-}
-
-MyString::MyString(int size) : length(size) {
-    data = new char[length + 1];
-    for (int i = 0; i <= length; i++) {
-        data[i] = '\0';
-    }
-}
-
-MyString::MyString(const MyString& other) {
-    length = other.length;
-    data = new char[length + 1];
-    strcpy(data, other.data);
-}
-
-
 MyString& MyString::operator=(const MyString& other) {
     if (this != &other) {
         delete[] data;
@@ -31,16 +9,10 @@ MyString& MyString::operator=(const MyString& other) {
         data = new char[length + 1];
         strcpy(data, other.data);
     }
-
     return *this;
 }
 
-MyString::~MyString() {
-    delete[] data;
-}
-
-
-MyString& MyString::intersectWith(const MyString& other) {
+MyString MyString::intersectWith(const MyString& other) {
 
     MyString resultString((this->length < other.length) ? this->length : other.length);
     
@@ -66,9 +38,10 @@ MyString& MyString::intersectWith(const MyString& other) {
     }
     
     resultString.data[resultLength] = '\0';
+    resultString.length = resultLength;
 
-    *this = resultString;
-    return *this;
+    // *this = resultString;
+    return resultString;
 
 }
 
