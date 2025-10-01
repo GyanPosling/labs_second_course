@@ -1,4 +1,4 @@
-#include "String.h"
+#include "../include/String.hpp"
 
 String& String::operator=(const String& other) {
     if (this != &other) {
@@ -10,14 +10,14 @@ String& String::operator=(const String& other) {
     return *this;
 }
 
-String String::operator+(const String& other) {
+String String::operator+(const String& other) const{
     String resultString(this->length + other.length);
     strcpy(resultString.data, this->data);
     strcat(resultString.data, other.data);
     return resultString;
 }
 
-String String::operator+(const char* string) {
+String String::operator+(const char* string) const{
     String resultString(strlen(string) + this->length);
     strcpy(resultString.data, this->data);
     strcat(resultString.data, string);
@@ -129,12 +129,3 @@ std::istream& operator>>(std::istream& is, String& string) {
     return is;
 }
 
-String& String::operator=(const String& other) {
-    if (this != &other) {
-        delete[] this->data;
-        this->length = other.length;
-        this->data = new char[this->length + 1];
-        strcpy(this->data, other.data);
-    }
-    return *this;
-}

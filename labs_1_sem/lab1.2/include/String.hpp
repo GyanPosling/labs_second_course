@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <cstring>
 
@@ -7,37 +8,36 @@ private:
     int length;
 
 public:
-    String(): this->data(nullptr), this->length(0) {}
+    String() : data(nullptr), length(0) {}
 
-    String(const char* str){
-        this->length = strlen(this->str);
+    String(const char* str) {
+        this->length = strlen(str);
         this->data = new char[this->length + 1];
-        strcpy(this->data, this->str);
+        strcpy(this->data, str);
     }
 
-    explicit String(int size): this->length(size){
+    explicit String(int size) : length(size) {
         this->data = new char[this->length + 1];
         for (int i = 0; i <= this->length; i++) {
             this->data[i] = '\0';
         }
     }
 
-    String(const String& other){
+    String(const String& other) {
         this->length = other.length;
-        this->data = new char[this.length + 1];
+        this->data = new char[this->length + 1];
         strcpy(this->data, other.data);
     }
 
-    ~String(){
+    ~String() {
         delete[] this->data;
     }
 
     String& operator=(const String& other);
 
     String operator+(const String& other) const;
-    String operator+(const char* string) const;
-    friend String operator+(const char* string, const String& object);
-    friend String operator+(const char* string1, const char* string2);
+    String operator+(const char* str) const;
+    friend String operator+(const char* str, const String& obj);
 
     String& operator+=(const String& other);
 
@@ -48,6 +48,8 @@ public:
 
     bool operator>(const String& other) const;
     bool operator<(const String& other) const;
+    bool operator==(const String& other) const;
+    bool operator!=(const String& other) const;
 
     String& operator++();
     String operator++(int);
@@ -56,4 +58,5 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const String& obj);
     friend std::istream& operator>>(std::istream& is, String& obj);
+
 };
