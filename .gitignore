@@ -1,0 +1,14 @@
+build/
+*/build/
+
+.vscode/
+.idea/
+
+*.exe
+*.out
+
+*.o
+
+CMakeCache.txt
+CMakeFiles/
+Makefile
