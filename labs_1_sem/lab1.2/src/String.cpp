@@ -32,24 +32,48 @@ String operator+(const char* string, const String& object) {
 }
 
 String& String::operator+=(const String& other) {
-    char* temp = new char[this->length + other.length + 1];
-    strcpy(temp, this->data);
-    strcat(temp, other.data);
+    String tempString(this->length + other.length);
+
+    strcpy(tempString.data, this->data);
+    strcat(tempString.data, other.data);
+
     delete[] this->data;
-    this->data = temp;
+    
+    this->data = tempString.data;
     this->length += other.length;
+
+    tempString.data = nullptr;
+    tempString.length = 0;
+
+    return *this;
+}
+
+String& String::operator+=(const char* string){
+    String tempString(this->length + strlen(string));
+
+    strcpy(tempString.data, this->data);
+    strcat(tempString.data, string);
+
+    delete[] this->data;
+
+    this->data = tempString.data;
+    this->length += strlen(string);
+
+    tempString.data = nullptr;
+    tempString.length = 0;
+
     return *this;
 }
 
 char& String::operator[](int index) {
-    return this->data[index];
-}
-
-const char& String::operator[](int index) const {
-    return this->data[index];
+    char nullChar = '\0';
+    return (index >= 0 && index < this->length) ? this->data[index] : nullChar;
 }
 
 String String::operator()(int start, int end) const {
+    if (start < 0 || end >= this->length || start > end) {
+        return String();
+    }
     String result(end - start + 1);
     for (int i = 0; i < end - start; i++) {
         result.data[i] = this->data[start + i];
@@ -64,6 +88,21 @@ bool String::operator>(const String& other) const {
 bool String::operator<(const String& other) const {
     return this->length < other.length;
 }
+bool String::operator==(const String& other) const {
+    return strcmp(this->data, other.data) == 0;
+}
+
+bool String::operator!=(const String& other) const {
+    return !(*this == other);
+}
+
+bool String::operator>=(const String& other) const {
+    return this->length >= other.length;
+}
+
+bool String::operator<=(const String& other) const {
+    return this->length <= other.length;
+}
 
 String& String::operator++() {
     for (int i = 0; i < this->length; i++) {
@@ -72,12 +111,6 @@ String& String::operator++() {
         }
     }
     return *this;
-}
-
-String String::operator++(int) {
-    String temp(*this);
-    ++(*this);
-    return temp;
 }
 
 String& String::operator--() {
@@ -89,12 +122,6 @@ String& String::operator--() {
     return *this;
 }
 
-String String::operator--(int) {
-    String temp(*this);
-    --(*this);
-    return temp;
-}
-
 std::ostream& operator<<(std::ostream& os, const String& string) {
     if (string.data != nullptr) {
         os << "'" << string.data << "'";
@@ -103,29 +130,17 @@ std::ostream& operator<<(std::ostream& os, const String& string) {
 }
 
 std::istream& operator>>(std::istream& is, String& string) {
-    char ch;
-    int capacity = 10;
-    int size = 0;
-    char* buffer = new char[capacity];
+    char buffer[1000];
     
-    while (is.get(ch) && ch != '\n') {
-        if (size >= capacity - 1) {
-            capacity *= 2;
-            char* newBuffer = new char[capacity];
-            strcpy(newBuffer, buffer);
-            delete[] buffer;
-            buffer = newBuffer;
-        }
-        buffer[size++] = ch;
-    }
-    buffer[size] = '\0';
+    std::cout << "Enter string: ";
+    rewind(stdin);
+    is.getline(buffer, 1000);
     
     delete[] string.data;
-    string.length = size;
+    string.length = strlen(buffer);
     string.data = new char[string.length + 1];
     strcpy(string.data, buffer);
     
-    delete[] buffer;
     return is;
 }
 

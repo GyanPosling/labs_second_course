@@ -40,6 +40,7 @@ public:
     friend String operator+(const char* str, const String& obj);
 
     String& operator+=(const String& other);
+    String& operator+=(const char *string);
 
     char& operator[](int index);
     const char& operator[](int index) const;
@@ -50,6 +51,9 @@ public:
     bool operator<(const String& other) const;
     bool operator==(const String& other) const;
     bool operator!=(const String& other) const;
+    bool operator>=(const String& other) const;
+    bool operator<=(const String& other) const;
+
 
     String& operator++();
     String operator++(int);

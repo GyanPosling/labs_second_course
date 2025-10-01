@@ -11,7 +11,7 @@ set(SOURCES
 )
 
 set(HEADERS
-    include/String.h
+    include/String.hpp
 )
 
 add_executable(lab1.2 ${SOURCES} ${HEADERS})

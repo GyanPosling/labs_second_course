@@ -1,72 +1,92 @@
 #include "../include/String.hpp"
 #include <iostream>
 
-int main() {
+using namespace std;
 
-    String s1;
-    std::cout << "Testing default constructor. Default s1: " << s1 << std::endl;
+void testAdditionOperators() {
+    cout << "======= Testing operator '+' =========" << endl;
+    String s1, s2;
+    cin >> s1 >> s2;
+    const char* constString = {"const string"};
     
-    String s2;
-    std::cout << "Testing constructor with char*. Enter a string for s2: ";
-    std::cin >> s2;
-    std::cout << "s2: " << s2 << std::endl;
+    String result1 = s1 + s2;
+    cout << "object + object = " << result1 << endl;
+    
+    result1 = s1 + constString;
+    cout << "object(s1) + const String('const string') = " << result1 << endl;
+    
+    result1 = constString + s2;
+    cout << "const String('const string') + object(s2) = " << result1 << endl;
 
-    std::cout << "Testing constructor with size. Enter size for s3: ";
-    int size;
-    std::cin >> size;
-    String s3(size);
-    std::cout << "s3 (size " << size << "): " << s3 << std::endl;
+}
 
-    String s4(s2);
-    std::cout << "Testing copy constructor. s4 is a copy of s2. s4: " << s4 << std::endl;
+void testPlusEqualsOperator() {
+    cout << "======== Testing operator '+=' ===============" << endl;
+    String s1, s2;
+    cin >> s1 >> s2;
+    
+    String s3 = s1;
+    s3 += s2;
+    cout << "s1 += s2: " << s3 << endl;
+}
 
-    String s5 = s2 + s4;
-    std::cout << "Testing operator+. s5 = s2 + s4. Result: " << s5 << std::endl;
-
-    String s6 = s2 + " World";
-    std::cout << "Testing operator+. s6 = s2 + ' World'. Result: " << s6 << std::endl;
-
-    String s7 = "Test" + s2;
-    std::cout << "Testing operator+. s7 = 'Test' + s2. Result: " << s7 << std::endl;
-
-    s2 += s4;
-    std::cout << "Testing operator+=. s2 += s4. New s2: " << s2 << std::endl;
-
-    std::cout << "Testing operator[]. Enter index for s2: ";
+void testIndexOperator() {
+    cout << "======= Testing operator '[]' ========" << endl;
+    String s;
+    cin >> s;
+    
     int index;
-    std::cin >> index;
-    std::cout << "s2[" << index << "]: " << s2[index] << std::endl;
+    cout << "Enter index: ";
+    cin >> index;
+    cout << "Char in " << index << " position = " << s[index] << endl;
+}
 
-    std::cout << "Testing operator(). Enter start and end indices for s2 substring: ";
-    int start, end;
-    std::cin >> start >> end;
-    String s8 = s2(start, end);
-    std::cout << "s2(" << start << "," << end << "): " << s8 << std::endl;
+void testSubstringOperator() {
+    cout << "======= Testing operator '()' substring ========" << endl;
+    String s;
+    cin >> s;
     
-    String s9;
-    std::cout << "Testing operator> and <. Enter string for s9: ";
-    std::cin >> s9;
-    String s10;
-    std::cout << "Enter string for s10: ";
-    std::cin >> s10;
-    std::cout << "s9 > s10: " << (s9 > s10) << std::endl;
-    std::cout << "s9 < s10: " << (s9 < s10) << std::endl;
+    int start, end;
+    cout << "Enter start and end indices for substring: ";
+    cin >> start >> end;
+    String subString = s(start, end);
+    cout << "Substring (start = " << start << ", end = " << end << ") = " << subString << endl;
+}
 
-    String s11;
-    std::cout << "Testing operator++ and --. Enter string for s11: ";
-    std::cin >> s11;
-    ++s11;
-    std::cout << "++s11 (encode): " << s11 << std::endl;
-    --s11;
-    std::cout << "--s11 (decode): " << s11 << std::endl;
+void testComparisonOperators() {
+    cout << "======= Testing comparison operators ========" << endl;
+    String s1, s2;
+    cin >> s1 >> s2;
+    
+    cout << "s1 = " << s1 << ", s2 = " << s2 << endl;
+    cout << "s1 == s2: " << (s1 == s2) << endl;
+    cout << "s1 != s2: " << (s1 != s2) << endl;
+    cout << "s1 > s2: " << (s1 > s2) << endl;
+    cout << "s1 < s2: " << (s1 < s2) << endl;
+    cout << "s1 >= s2: " << (s1 >= s2) << endl;
+    cout << "s1 <= s2: " << (s1 <= s2) << endl;
+}
 
-    std::cout << "Testing operator>>. Enter a string for s12: ";
-    String s12;
-    std::cin >> s12;
-    std::cout << "s12: " << s12 << std::endl;
+void testIncrementDecrementOperators() {
+    cout << "======= Testing increment/decrement operators ========" << endl;
+    String s5 = "abc";
+    cout << "Original string: " << s5 << endl;
 
-    String s13 = s2;
-    std::cout << "Testing operator=. s13 = s2. Result: " << s13 << std::endl;
+    ++s5;
+    cout << "After prefix ++: " << s5 << endl;
+    
+    --s5;
+    cout << "After prefix --: " << s5 << endl;
 
+    cout <<"Exiting... ";
+}
+
+int main() {
+    testAdditionOperators();
+    testPlusEqualsOperator();
+    testIndexOperator();
+    testSubstringOperator();
+    testComparisonOperators();
+    testIncrementDecrementOperators();
     return 0;
 }
