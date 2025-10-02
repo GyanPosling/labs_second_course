@@ -12,7 +12,7 @@ MyString& MyString::operator=(const MyString& other) {
     return *this;
 }
 
-MyString MyString::intersectWith(const MyString& other) {
+MyString MyString::intersectWith(const MyString& other) const{
 
     MyString resultString((this->length < other.length) ? this->length : other.length);
     
@@ -43,6 +43,10 @@ MyString MyString::intersectWith(const MyString& other) {
     // *this = resultString;
     return resultString;
 
+}
+
+MyString MyString::operator&(const MyString& other) const{
+    return this->intersectWith(other);
 }
 
 std::ostream& operator<<(std::ostream& os, const MyString& str) {

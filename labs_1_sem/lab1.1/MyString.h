@@ -34,7 +34,9 @@ public:
     }   
 
     MyString& operator=(const MyString& other);
-    MyString intersectWith(const MyString& other);
+    MyString intersectWith(const MyString& other) const;
+    MyString operator&(const MyString& other) const;
+
 
     friend std::ostream& operator<<(std::ostream& os, const MyString& str);
     friend std::istream& operator>>(std::istream& is, MyString& str);

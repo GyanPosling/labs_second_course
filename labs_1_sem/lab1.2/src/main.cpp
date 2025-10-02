@@ -30,6 +30,60 @@ void testPlusEqualsOperator() {
     cout << "s1 += s2: " << s3 << endl;
 }
 
+void testDifferenceOperators() {
+    cout << "======= Testing operator '-' =========" << endl;
+    String s1, s2;
+    cin >> s1 >> s2;
+    const char* constString = {"const string"};
+    
+    String result1 = s1 - s2;
+    cout << "object - object = " << result1 << endl;
+    
+    result1 = s1 - constString;
+    cout << "object(s1) - const String('const string') = " << result1 << endl;
+    
+    result1 = constString - s2;
+    cout << "const String('const string') - object(s2) = " << result1 << endl;
+
+}
+
+void testDifferenceEqualsOperator() {
+    cout << "======== Testing operator '-=' ===============" << endl;
+    String s1, s2;
+    cin >> s1 >> s2;
+    
+    String s3 = s1;
+    s3 -= s2;
+    cout << "s1 -= s2: " << s3 << endl;
+}
+
+void testMultiplyOperators() {
+    cout << "======= Testing operator '*' =========" << endl;
+    String s;
+    cin >> s;
+    int multiplyDigit;
+    cout << "Enter digit on which u wana multyply: ";
+    cin >> multiplyDigit;
+    cin.ignore();
+    
+    String result = s * multiplyDigit;
+    cout << "object * digit = " << result << endl;
+}
+
+
+void testMultiplyEqualsOperator() {
+    cout << "======== Testing operator '*=' ===============" << endl;
+    String s;
+    cin >> s;
+    int multiplyDigit;
+    cout << "Enter digit on which u wana multyply: ";
+    cin >> multiplyDigit;
+    cin.ignore();
+    
+    s *= multiplyDigit;
+    cout << "object *= digit: " << s << endl;
+}
+
 void testIndexOperator() {
     cout << "======= Testing operator '[]' ========" << endl;
     String s;
@@ -81,12 +135,49 @@ void testIncrementDecrementOperators() {
     cout <<"Exiting... ";
 }
 
+void checkAllOperationInLine(){
+    cout << "Check all operations in line";
+    String s1, s2;
+    cin >> s1 >> s2;
+    
+    String result = (s1 > s2 ? ++s1 + " is greater" + (s1 += "!") : --s2 + " is smaller" + (s2 += "?")) + (s1[0] == s2[0] ? " same_start" : " diff_start") + (s1(0,2) + s2(0,2)) + (s1 += s2 += " end");
+    cout << result << endl;
+
+    // String result;
+    // if (s1 > s2) {
+    //     ++s1;
+    //     result = s1 + " is greater" + (s1 += "!");
+    // } else {
+    //     --s2;
+    //     result = s2 + " is smaller" + (s2 += "?");
+    // }
+
+    // if (s1[0] == s2[0]) {
+    //     result += " same_start";
+    // } else {
+    //     result += " diff_start";
+    // }
+
+    // result += s1(0, 2) + s2(0, 2);
+    // s2 += " end";
+    // s1 += s2;
+    // result += s1;
+
+    // cout << result << endl;
+}
+
+
 int main() {
     testAdditionOperators();
     testPlusEqualsOperator();
+    testDifferenceOperators();
+    testDifferenceEqualsOperator();
+    testMultiplyOperators();
+    testMultiplyEqualsOperator();
     testIndexOperator();
     testSubstringOperator();
     testComparisonOperators();
     testIncrementDecrementOperators();
+    checkAllOperationInLine();
     return 0;
 }

@@ -18,7 +18,7 @@ void performIntersection() {
     
     MyString result = strings[0];
     for (int i = 1; i < count; i++) {
-        result = result.intersectWith(strings[i]);
+        result = result & strings[i];
     }
 
     //result = result.intersectWith(strings[1].intersectWith(strings[2]));
