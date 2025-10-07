@@ -1,4 +1,5 @@
 #include "../include/String.hpp"
+#include <limits>
 #include <iostream>
 
 using namespace std;
@@ -64,7 +65,8 @@ void testMultiplyOperators() {
     int multiplyDigit;
     cout << "Enter digit on which u wana multyply: ";
     cin >> multiplyDigit;
-    cin.ignore();
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
     
     String result = s * multiplyDigit;
     cout << "object * digit = " << result << endl;
@@ -78,10 +80,18 @@ void testMultiplyEqualsOperator() {
     int multiplyDigit;
     cout << "Enter digit on which u wana multyply: ";
     cin >> multiplyDigit;
-    cin.ignore();
-    
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');    
     s *= multiplyDigit;
     cout << "object *= digit: " << s << endl;
+}
+
+void testIntersection(){
+    cout << "======== Testing operator '&' ===============" << endl;
+    String s1, s2;
+    cin>>s1>>s2;
+    String result = s1 & s2;
+    cout<<"Result = "<< result<<endl;
 }
 
 void testIndexOperator() {
@@ -93,6 +103,7 @@ void testIndexOperator() {
     cout << "Enter index: ";
     cin >> index;
     cout << "Char in " << index << " position = " << s[index] << endl;
+    cin.ignore();
 }
 
 void testSubstringOperator() {
@@ -103,6 +114,7 @@ void testSubstringOperator() {
     int start, end;
     cout << "Enter start and end indices for substring: ";
     cin >> start >> end;
+    cin.ignore();
     String subString = s(start, end);
     cout << "Substring (start = " << start << ", end = " << end << ") = " << subString << endl;
 }
@@ -166,18 +178,33 @@ void checkAllOperationInLine(){
     // cout << result << endl;
 }
 
+void printRestartBox() {
+    cout << "+------------------------------+\n";
+    cout << "|   Restart? (1 = Yes, 0 = No) |\n";
+    cout << "+------------------------------+\n";
+    cout << "Answer: ";
+}
 
 int main() {
-    testAdditionOperators();
-    testPlusEqualsOperator();
-    testDifferenceOperators();
-    testDifferenceEqualsOperator();
-    testMultiplyOperators();
-    testMultiplyEqualsOperator();
-    testIndexOperator();
-    testSubstringOperator();
-    testComparisonOperators();
-    testIncrementDecrementOperators();
-    checkAllOperationInLine();
+    int restart;
+    do {
+        testAdditionOperators();
+        testPlusEqualsOperator();
+        testDifferenceOperators();
+        testDifferenceEqualsOperator();
+        //testMultiplyOperators();
+        //testMultiplyEqualsOperator();
+        testIntersection();
+        testIndexOperator();
+        testSubstringOperator();
+        testComparisonOperators();
+        testIncrementDecrementOperators();
+        checkAllOperationInLine();
+        printRestartBox();
+        cin >> restart;
+    } while (restart == 1);
+
+    cout<<"Exiting...";
+
     return 0;
 }

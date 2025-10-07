@@ -41,10 +41,10 @@ String String::operator-(const String& other) const{
     int resultLength = 0;
     
     for (int i = 0; i < this->length; i++) {
-        bool found = false;
+        short found = 0;
         for (int j = 0; j < other.length; j++) {
             if (this->data[i] == other.data[j]) {
-                found = true;
+                found = 1;
                 break;
             }
         }
@@ -92,6 +92,46 @@ String& String::operator*=(int multiplyDigit){
     return *this;
 }
 
+String String::operator&(const String& other)const{
+    String resultString((this->length < other.length) ? this->length : other.length);
+    
+    int resultLength = 0;
+    
+    for (int i = 0; i < this->length; i++) {
+        for (int j = 0; j < other.length; j++) {
+            if (this->data[i] == other.data[j]) {
+                short duplicate = 0;
+                for (int k = 0; k < resultLength; k++) {
+                    if (resultString.data[k] == this->data[i]) {
+                        duplicate = 1;
+                        break;
+                    }
+                }
+                if (!duplicate) {
+                    resultString.data[resultLength] = this->data[i];
+                    resultLength++;
+                }
+                break;
+            }
+        }
+    }
+    
+    resultString.data[resultLength] = '\0';
+    resultString.length = resultLength;
+
+    return resultString;
+}
+
+String String::operator&(const char* string)const{
+    String result = *this & String(string);
+    return result;
+}
+
+String operator&(const char* string, String& object){
+    String result = String(string) & object;
+    return result;
+}
+
 char& String::operator[](int index) {
     char nullChar = '\0';
     return (index >= 0 && index < length) ? data[index] : nullChar;
@@ -110,27 +150,27 @@ String String::operator()(int start, int end) const {
     return result;
 }
 
-bool String::operator>(const String& other) const {
+short String::operator>(const String& other) const {
     return this->length > other.length;
 }
 
-bool String::operator<(const String& other) const {
+short String::operator<(const String& other) const {
     return this->length < other.length;
 }
 
-bool String::operator==(const String& other) const {
+short String::operator==(const String& other) const {
     return strcmp(this->data, other.data) == 0;
 }
 
-bool String::operator!=(const String& other) const {
+short String::operator!=(const String& other) const {
     return !(*this == other);
 }
 
-bool String::operator>=(const String& other) const {
+short String::operator>=(const String& other) const {
     return this->length >= other.length;
 }
 
-bool String::operator<=(const String& other) const {
+short String::operator<=(const String& other) const {
     return this->length <= other.length;
 }
 
@@ -172,10 +212,9 @@ std::ostream& operator<<(std::ostream& os, const String& string) {
 }
 
 std::istream& operator>>(std::istream& is, String& string) {
-    char buffer[1000];
+    char buffer[80];
     std::cout << "Enter string: ";
-    rewind(stdin);
-    is.getline(buffer, 1000);
+    is.getline(buffer, 80);
     string = String(buffer);
     return is;
 }
