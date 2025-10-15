@@ -1,41 +1,40 @@
-#ifndef TEACHER_HPP
-#define TEACHER_HPP
-
-#include "../include/Human.hpp"
+#pragma once
+#include "Human.hpp"
+#include<string>
+using namespace std;
 
 #define SCIENTIFIC_WORKS_SIZE 5
 
-class UniversityTeacher : public Human {
-private:
-    std::string position;
-    std::string academicDegree;
-    std::string specialty;
-    std::string scientificWorks[SCIENTIFIC_WORKS_SIZE];
+class UniversityTeacher : virtual public Human {
+protected:
+    string position;
+    string academicDegree;
+    string specialty;
+    string scientificWorks[SCIENTIFIC_WORKS_SIZE];
     int scientificWorksCount;
 public:
     UniversityTeacher();
-    UniversityTeacher(const std::string& first, const std::string& last, const std::string& middle, int year,
-                     const std::string& pos, const std::string& degree, const std::string& spec);
+    UniversityTeacher(const string& first, const string& last, const string& middle, int year,
+                     const string& pos, const string& degree, const string& spec);
     ~UniversityTeacher();
     
     UniversityTeacher& operator=(const UniversityTeacher& other);
-    friend std::ostream& operator<<(std::ostream& os, const UniversityTeacher& teacher);
-    friend std::istream& operator>>(std::istream& is, UniversityTeacher& teacher);
+    friend ostream& operator<<(ostream& os, const UniversityTeacher& teacher);
+    friend istream& operator>>(istream& is, UniversityTeacher& teacher);
     
-    std::string getPosition() const;
-    std::string getAcademicDegree() const;
-    std::string getSpecialty() const;
-    std::string getScientificWork(int index) const;
+    string getPosition() const;
+    string getAcademicDegree() const;
+    string getSpecialty() const;
+    string getScientificWork(int index) const;
     int getScientificWorksCount() const;
     int getScientificWorksSize() const;
     
-    void setPosition(const std::string& pos);
-    void setAcademicDegree(const std::string& degree);
-    void setSpecialty(const std::string& spec);
-    void setScientificWork(int index, const std::string& work);
-    void addScientificWork(const std::string& work);
+    void setPosition(const string& pos);
+    void setAcademicDegree(const string& degree);
+    void setSpecialty(const string& spec);
+    void setScientificWork(int index, const string& work);
+    void addScientificWork(const string& work);
     
     void printHeader() const override;
+    void printTable() const override;
 };
-
-#endif

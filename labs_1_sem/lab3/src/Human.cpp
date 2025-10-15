@@ -1,5 +1,4 @@
-#include "../include/Human.hpp"
-
+#include "Human.hpp"
 
 Human::Human() : birthYear(0) {}
 
@@ -24,7 +23,14 @@ std::ostream& operator<<(std::ostream& os, const Human& human) {
 }
 
 std::istream& operator>>(std::istream& is, Human& human) {
-    is >> human.lastName >> human.firstName >> human.middleName >> human.birthYear;
+    std::cout << "Enter last name: ";
+    is >> human.lastName;
+    std::cout << "Enter first name: ";
+    is >> human.firstName;
+    std::cout << "Enter middle name: ";
+    is >> human.middleName;
+    std::cout << "Enter birth year: ";
+    is >> human.birthYear;
     return is;
 }
 

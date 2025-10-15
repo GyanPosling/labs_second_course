@@ -1,4 +1,4 @@
-#include "../include/CommissionMember.hpp"
+#include "CommissionMember.hpp"
 
 CommissionMember::CommissionMember() : Human(), appointmentYear(0), autobiographyCount(0) {}
 
@@ -31,7 +31,25 @@ std::ostream& operator<<(std::ostream& os, const CommissionMember& member) {
 }
 
 std::istream& operator>>(std::istream& is, CommissionMember& member) {
-    is >> static_cast<Human&>(member) >> member.commissionName >> member.appointmentYear >> member.certificateNumber;
+    is >> static_cast<Human&>(member);
+    std::cout << "Enter commission name: ";
+    is >> member.commissionName;
+    std::cout << "Enter appointment year: ";
+    is >> member.appointmentYear;
+    std::cout << "Enter certificate number: ";
+    is >> member.certificateNumber;
+    
+    std::cout << "Enter number of autobiography entries (0-" << AUTOBIOGRAPHY_SIZE << "): ";
+    is >> member.autobiographyCount;
+    if (member.autobiographyCount > AUTOBIOGRAPHY_SIZE) {
+        member.autobiographyCount = AUTOBIOGRAPHY_SIZE;
+    }
+    
+    for (int i = 0; i < member.autobiographyCount; i++) {
+        std::cout << "Enter autobiography entry " << i + 1 << ": ";
+        is >> member.autobiography[i];
+    }
+    
     return is;
 }
 
@@ -64,5 +82,31 @@ void CommissionMember::addAutobiography(const std::string& bio) {
 }
 
 void CommissionMember::printHeader() const {
-    std::cout << "Commission Member: " << this->lastName << " " << this->firstName << " " << this->middleName << "\n";
+    cout << " | " << left << setw(15) << "Last Name";
+    cout << "| " << left << setw(15) << "First Name";
+    cout << "| " << left << setw(15) << "Middle Name";
+    cout << "| " << left << setw(12) << "Birth Year";
+    cout << "| " << left << setw(20) << "Commission";
+    cout << "| " << left << setw(15) << "Appoint Year";
+    cout << "| " << left << setw(15) << "Certificate";
+    cout << "| " << left << setw(20) << "Autobiography";
+    cout << "| " << left << setw(10) << "Bio Count" << "|" << endl;
+}
+
+void CommissionMember::printTable() const {
+    cout << " | " << left << setw(15) << this->lastName;
+    cout << "| " << left << setw(15) << this->firstName;
+    cout << "| " << left << setw(15) << this->middleName;
+    cout << "| " << left << setw(12) << this->birthYear;
+    cout << "| " << left << setw(20) << this->commissionName;
+    cout << "| " << left << setw(15) << this->appointmentYear;
+    cout << "| " << left << setw(15) << this->certificateNumber;
+    
+    string autobiographyStr;
+    for (int i = 0; i < this->autobiographyCount; i++) {
+        if (i > 0) autobiographyStr += ", ";
+        autobiographyStr += this->autobiography[i];
+    }
+    cout << "| " << left << setw(20) << autobiographyStr;
+    cout << "| " << left << setw(10) << this->autobiographyCount << "|" << endl;
 }

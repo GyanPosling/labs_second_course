@@ -1,4 +1,4 @@
-#include "../include/Teacher.hpp"
+#include "Teacher.hpp"
 
 UniversityTeacher::UniversityTeacher() : Human(), scientificWorksCount(0) {}
 
@@ -31,7 +31,25 @@ std::ostream& operator<<(std::ostream& os, const UniversityTeacher& teacher) {
 }
 
 std::istream& operator>>(std::istream& is, UniversityTeacher& teacher) {
-    is >> static_cast<Human&>(teacher) >> teacher.position >> teacher.academicDegree >> teacher.specialty;
+    is >> static_cast<Human&>(teacher);
+    std::cout << "Enter position: ";
+    is >> teacher.position;
+    std::cout << "Enter academic degree: ";
+    is >> teacher.academicDegree;
+    std::cout << "Enter specialty: ";
+    is >> teacher.specialty;
+    
+    std::cout << "Enter number of scientific works (0-" << SCIENTIFIC_WORKS_SIZE << "): ";
+    is >> teacher.scientificWorksCount;
+    if (teacher.scientificWorksCount > SCIENTIFIC_WORKS_SIZE) {
+        teacher.scientificWorksCount = SCIENTIFIC_WORKS_SIZE;
+    }
+    
+    for (int i = 0; i < teacher.scientificWorksCount; i++) {
+        std::cout << "Enter scientific work " << i + 1 << ": ";
+        is >> teacher.scientificWorks[i];
+    }
+    
     return is;
 }
 
@@ -64,5 +82,31 @@ void UniversityTeacher::addScientificWork(const std::string& work) {
 }
 
 void UniversityTeacher::printHeader() const {
-    std::cout << "University Teacher: " << this->lastName << " " << this->firstName << " " << this->middleName << "\n";
+    cout << " | " << left << setw(15) << "Last Name";
+    cout << "| " << left << setw(15) << "First Name";
+    cout << "| " << left << setw(15) << "Middle Name";
+    cout << "| " << left << setw(12) << "Birth Year";
+    cout << "| " << left << setw(20) << "Position";
+    cout << "| " << left << setw(15) << "Degree";
+    cout << "| " << left << setw(20) << "Specialty";
+    cout << "| " << left << setw(15) << "Scientific Works";
+    cout << "| " << left << setw(10) << "Works Count" << "|" << endl;
+}
+
+void UniversityTeacher::printTable() const {
+    cout << " | " << left << setw(15) << this->lastName;
+    cout << "| " << left << setw(15) << this->firstName;
+    cout << "| " << left << setw(15) << this->middleName;
+    cout << "| " << left << setw(12) << this->birthYear;
+    cout << "| " << left << setw(20) << this->position;
+    cout << "| " << left << setw(15) << this->academicDegree;
+    cout << "| " << left << setw(20) << this->specialty;
+    
+    string scientificWorksStr;
+    for (int i = 0; i < this->scientificWorksCount; i++) {
+        if (i > 0) scientificWorksStr += ", ";
+        scientificWorksStr += this->scientificWorks[i];
+    }
+    cout << "| " << left << setw(15) << scientificWorksStr;
+    cout << "| " << left << setw(10) << this->scientificWorksCount << "|" << endl;
 }
