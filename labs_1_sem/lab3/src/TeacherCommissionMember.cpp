@@ -1,26 +1,22 @@
 #include "../include/TeacherCommissionMember.hpp"
 #include <iostream>
 
-TeacherCommissionMember::TeacherCommissionMember() : UniversityTeacher(), CommissionMember(), commissionWorks(nullptr), commissionWorksCount(0) {}
+
+TeacherCommissionMember::TeacherCommissionMember() : UniversityTeacher(), CommissionMember(), commissionWorksCount(0) {}
 
 TeacherCommissionMember::TeacherCommissionMember(const std::string& first, const std::string& last, const std::string& middle, int year,
                                                  const std::string& pos, const std::string& degree, const std::string& spec,
                                                  const std::string& commission, int appYear, const std::string& cert)
     : UniversityTeacher(first, last, middle, year, pos, degree, spec),
-      CommissionMember(first, last, middle, year, commission, appYear, cert), commissionWorks(nullptr), commissionWorksCount(0) {}
+      CommissionMember(first, last, middle, year, commission, appYear, cert), commissionWorksCount(0) {}
 
-TeacherCommissionMember::~TeacherCommissionMember() {
-    delete[] this->commissionWorks;
-}
+TeacherCommissionMember::~TeacherCommissionMember() {}
 
 TeacherCommissionMember& TeacherCommissionMember::operator=(const TeacherCommissionMember& other) {
     if (this != &other) {
         UniversityTeacher::operator=(other);
         CommissionMember::operator=(other);
-        
-        delete[] this->commissionWorks;
         this->commissionWorksCount = other.commissionWorksCount;
-        this->commissionWorks = new std::string[this->commissionWorksCount];
         for (int i = 0; i < this->commissionWorksCount; i++) {
             this->commissionWorks[i] = other.commissionWorks[i];
         }
@@ -41,17 +37,27 @@ std::istream& operator>>(std::istream& is, TeacherCommissionMember& tcm) {
     return is;
 }
 
-std::string* TeacherCommissionMember::getCommissionWorks() const { return this->commissionWorks; }
+std::string TeacherCommissionMember::getCommissionWork(int index) const { 
+    if (index >= 0 && index < this->commissionWorksCount) return this->commissionWorks[index];
+    return "";
+}
 int TeacherCommissionMember::getCommissionWorksCount() const { return this->commissionWorksCount; }
-void TeacherCommissionMember::setCommissionWorks(std::string* works, int count) {
-    delete[] this->commissionWorks;
-    this->commissionWorksCount = count;
-    this->commissionWorks = new std::string[this->commissionWorksCount];
-    for (int i = 0; i < this->commissionWorksCount; i++) {
-        this->commissionWorks[i] = works[i];
+int TeacherCommissionMember::getCommissionWorksSize() const { return COMMISSION_WORKS_SIZE; }
+void TeacherCommissionMember::setCommissionWork(int index, const std::string& work) { 
+    if (index >= 0 && index < COMMISSION_WORKS_SIZE) {
+        this->commissionWorks[index] = work;
+        if (index >= this->commissionWorksCount) {
+            this->commissionWorksCount = index + 1;
+        }
+    }
+}
+void TeacherCommissionMember::addCommissionWork(const std::string& work) {
+    if (this->commissionWorksCount < COMMISSION_WORKS_SIZE) {
+        this->commissionWorks[this->commissionWorksCount] = work;
+        this->commissionWorksCount++;
     }
 }
 
 void TeacherCommissionMember::printHeader() const {
-    std::cout << "Teacher Commission Member: " << UniversityTeacher::getLastName() << " " << UniversityTeacher::getFirstName() << " " << UniversityTeacher::getMiddleName() << "\n";
+    std::cout << "Teacher Commission Member: " << this->UniversityTeacher::getLastName() << " " << this->UniversityTeacher::getFirstName() << " " << this->UniversityTeacher::getMiddleName() << "\n";
 }

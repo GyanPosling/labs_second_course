@@ -1,14 +1,12 @@
 #include "../include/CommissionMember.hpp"
 
-CommissionMember::CommissionMember() : Human(), autobiography(nullptr), autobiographyCount(0) {}
+CommissionMember::CommissionMember() : Human(), appointmentYear(0), autobiographyCount(0) {}
 
 CommissionMember::CommissionMember(const std::string& first, const std::string& last, const std::string& middle, int year,
                                    const std::string& commission, int appYear, const std::string& cert)
-    : Human(first, last, middle, year), commissionName(commission), appointmentYear(appYear), certificateNumber(cert), autobiography(nullptr), autobiographyCount(0) {}
+    : Human(first, last, middle, year), commissionName(commission), appointmentYear(appYear), certificateNumber(cert), autobiographyCount(0) {}
 
-CommissionMember::~CommissionMember() {
-    delete[] this->autobiography;
-}
+CommissionMember::~CommissionMember() {}
 
 CommissionMember& CommissionMember::operator=(const CommissionMember& other) {
     if (this != &other) {
@@ -16,10 +14,7 @@ CommissionMember& CommissionMember::operator=(const CommissionMember& other) {
         this->commissionName = other.commissionName;
         this->appointmentYear = other.appointmentYear;
         this->certificateNumber = other.certificateNumber;
-        
-        delete[] this->autobiography;
         this->autobiographyCount = other.autobiographyCount;
-        this->autobiography = new std::string[this->autobiographyCount];
         for (int i = 0; i < this->autobiographyCount; i++) {
             this->autobiography[i] = other.autobiography[i];
         }
@@ -43,18 +38,28 @@ std::istream& operator>>(std::istream& is, CommissionMember& member) {
 std::string CommissionMember::getCommissionName() const { return this->commissionName; }
 int CommissionMember::getAppointmentYear() const { return this->appointmentYear; }
 std::string CommissionMember::getCertificateNumber() const { return this->certificateNumber; }
-std::string* CommissionMember::getAutobiography() const { return this->autobiography; }
+std::string CommissionMember::getAutobiography(int index) const { 
+    if (index >= 0 && index < this->autobiographyCount) return this->autobiography[index];
+    return "";
+}
 int CommissionMember::getAutobiographyCount() const { return this->autobiographyCount; }
+int CommissionMember::getAutobiographySize() const { return AUTOBIOGRAPHY_SIZE; }
 
 void CommissionMember::setCommissionName(const std::string& name) { this->commissionName = name; }
 void CommissionMember::setAppointmentYear(int year) { this->appointmentYear = year; }
 void CommissionMember::setCertificateNumber(const std::string& number) { this->certificateNumber = number; }
-void CommissionMember::setAutobiography(std::string* bio, int count) {
-    delete[] this->autobiography;
-    this->autobiographyCount = count;
-    this->autobiography = new std::string[this->autobiographyCount];
-    for (int i = 0; i < this->autobiographyCount; i++) {
-        this->autobiography[i] = bio[i];
+void CommissionMember::setAutobiography(int index, const std::string& bio) { 
+    if (index >= 0 && index < AUTOBIOGRAPHY_SIZE) {
+        this->autobiography[index] = bio;
+        if (index >= this->autobiographyCount) {
+            this->autobiographyCount = index + 1;
+        }
+    }
+}
+void CommissionMember::addAutobiography(const std::string& bio) {
+    if (this->autobiographyCount < AUTOBIOGRAPHY_SIZE) {
+        this->autobiography[this->autobiographyCount] = bio;
+        this->autobiographyCount++;
     }
 }
 

@@ -3,12 +3,14 @@
 
 #include "../include/Human.hpp"
 
+#define AUTOBIOGRAPHY_SIZE 10
+
 class CommissionMember : public Human {
 private:
     std::string commissionName;
     int appointmentYear;
     std::string certificateNumber;
-    std::string* autobiography;
+    std::string autobiography[AUTOBIOGRAPHY_SIZE];
     int autobiographyCount;
 public:
     CommissionMember();
@@ -23,13 +25,15 @@ public:
     std::string getCommissionName() const;
     int getAppointmentYear() const;
     std::string getCertificateNumber() const;
-    std::string* getAutobiography() const;
+    std::string getAutobiography(int index) const;
     int getAutobiographyCount() const;
+    int getAutobiographySize() const;
     
     void setCommissionName(const std::string& name);
     void setAppointmentYear(int year);
     void setCertificateNumber(const std::string& number);
-    void setAutobiography(std::string* bio, int count);
+    void setAutobiography(int index, const std::string& bio);
+    void addAutobiography(const std::string& bio);
     
     void printHeader() const override;
 };

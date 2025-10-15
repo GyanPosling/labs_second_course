@@ -4,9 +4,11 @@
 #include "../include/Teacher.hpp"
 #include "../include/CommissionMember.hpp"
 
+#define COMMISSION_WORKS_SIZE 5
+
 class TeacherCommissionMember : public UniversityTeacher, public CommissionMember {
 private:
-    std::string* commissionWorks;
+    std::string commissionWorks[COMMISSION_WORKS_SIZE];
     int commissionWorksCount;
 public:
     TeacherCommissionMember();
@@ -19,9 +21,11 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const TeacherCommissionMember& tcm);
     friend std::istream& operator>>(std::istream& is, TeacherCommissionMember& tcm);
     
-    std::string* getCommissionWorks() const;
+    std::string getCommissionWork(int index) const;
     int getCommissionWorksCount() const;
-    void setCommissionWorks(std::string* works, int count);
+    int getCommissionWorksSize() const;
+    void setCommissionWork(int index, const std::string& work);
+    void addCommissionWork(const std::string& work);
     
     void printHeader() const override;
 };

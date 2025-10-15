@@ -1,5 +1,6 @@
 #include "../include/Human.hpp"
 
+
 Human::Human() : birthYear(0) {}
 
 Human::Human(const std::string& first, const std::string& last, const std::string& middle, int year)
