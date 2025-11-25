@@ -9,3 +9,6 @@
 ### [Лабараторная №4  - Шаблоны(Deque)](https://github.com/GyanPosling/labsUni/tree/main/C%2B%2BLabs/lab4)
 
 ### [Лабараторная №5  - Обработка Исключения](https://github.com/GyanPosling/labsUni/tree/main/C%2B%2BLabs/lab5)
+
+
+### [Курсовая работа - Умный дом](https://github.com/GyanPosling/SmartHouse)
