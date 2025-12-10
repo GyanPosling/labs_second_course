@@ -10,5 +10,6 @@
 
 ### [Лабараторная №5  - Обработка Исключения](https://github.com/GyanPosling/labsUni/tree/main/C%2B%2BLabs/lab5)
 
+### [Лабараторная №6  - Работа с файлами](https://github.com/GyanPosling/labsUni/tree/main/C%2B%2BLabs/lab6)
 
 ### [Курсовая работа - Умный дом](https://github.com/GyanPosling/SmartHouse)
