@@ -68,6 +68,8 @@ T safeInputNumeric(std::istream& is, T min, T max, const std::string& prompt = "
 
 std::string safeGetLine(std::istream& is, Language lang, const std::string& prompt = "");
 
+std::string safeGetName(std::istream& is, Language lang, const std::string& prompt);
+
 Date safeInputDate(std::istream& is, const std::string& format = "", const std::string& prompt = "");
 
 bool isEnglishOnly(const std::string& str);

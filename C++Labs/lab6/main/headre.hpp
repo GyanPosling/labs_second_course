@@ -131,7 +131,6 @@ void modifyObject(Deque<CommissionMember*>& deque) {
         cout << "Error updating field: " << e.what() << endl;
     }
 }
-
 void modifyObject(Deque<TeacherCommissionMember*>& deque) {
     string sideOptions[2] = {"1. Modify First", "2. Modify Last"};
     drawMenu("Select Object to Modify", sideOptions, 2);

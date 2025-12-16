@@ -48,9 +48,9 @@ ostream& operator<<(ostream& os, const Human& member) {
     return os;
 }
 istream& operator>>(istream& is, Human& member) {
-    member.firstName = safeGetLine(is, Language::ENGLISH, "Enter first name (English only): ");
-    member.lastName = safeGetLine(is, Language::ENGLISH, "Enter last name (English only): ");
-    member.middleName = safeGetLine(is, Language::ENGLISH, "Enter middle name (English only): ");
+    member.firstName = safeGetName(is, Language::ENGLISH, "Enter first name (English only): ");
+    member.lastName = safeGetName(is, Language::ENGLISH, "Enter last name (English only): ");
+    member.middleName = safeGetName(is, Language::ENGLISH, "Enter middle name (English only): ");
     member.birthday = safeInputDate(is, "DD/MM/YYYY", "Enter birthday (DD/MM/YYYY): ");
     return is;
 }

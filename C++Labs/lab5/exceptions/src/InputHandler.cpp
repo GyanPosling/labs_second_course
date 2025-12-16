@@ -54,6 +54,30 @@ string safeGetLine(istream& is, Language lang, const string& prompt) {
     return input;
 }
 
+string safeGetName(istream& is, Language lang, const string& prompt) {
+    string input;
+    bool valid = false;
+
+    do {
+        input = safeGetLine(is, lang, prompt);
+        
+        try {
+            if (!input.empty() && !isupper(static_cast<unsigned char>(input[0]))) {
+                throw InputException(8, "Name must start with a capital letter. Got: " + input);
+            }
+            
+            valid = true;
+            
+        } catch (const InputException& e) {
+            cout << "Error: " << e.what() << "\n";
+            valid = false;
+        }
+        
+    } while (!valid);
+    
+    return input;
+}
+
 Date safeInputDate(std::istream& is, const std::string& format, const std::string& prompt) {
     Date result;
     bool valid = false;
