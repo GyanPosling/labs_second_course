@@ -131,6 +131,7 @@ void modifyObject(Deque<CommissionMember*>& deque) {
         cout << "Error updating field: " << e.what() << endl;
     }
 }
+
 void modifyObject(Deque<TeacherCommissionMember*>& deque) {
     string sideOptions[2] = {"1. Modify First", "2. Modify Last"};
     drawMenu("Select Object to Modify", sideOptions, 2);
@@ -176,12 +177,10 @@ void peekObject(Deque<T*>& deque) {
     }
 
     T* obj = (choice == 1) ? deque.peekFirst() : deque.peekLast();
-
-    if (!deque.isEmpty()) {
-        T temp;
-        temp.printHeader();
-        obj->printTable();
-    }
+    
+    T temp;
+    temp.printHeader();
+    obj->printTable();
 }
 
 template <typename T>
@@ -229,7 +228,6 @@ void searchInDeque(Deque<T*>& deque) {
 
     string searchString;
     Date searchDate;
-    Date defaultDate(1, 1, 1900);
 
     T* searchObj = new T();
 
@@ -331,78 +329,270 @@ void sortDequeByField(Deque<T*>& deque) {
 }
 
 template <typename T>
-void saveToTextFile(Deque<T*>& deque, const string& filename) {
-    TextFile<T> file(filename);
-    try {
-        file.clearFile();
-        Deque<T*> tmp;
-        while (!deque.isEmpty()) {
-            T* obj = deque.peekFirst();
-            deque.popFront();
-            file.saveRecord(*obj);
-            tmp.pushBack(obj);
+void saveToFile(Deque<T*>& deque) {
+    if (deque.isEmpty()) {
+        cout << "Deque is empty. Nothing to save." << endl;
+        return;
+    }
+    
+    string fileTypeOptions[2] = {"1. Text file", "2. Binary file"};
+    drawMenu("Select File Type", fileTypeOptions, 2);
+    
+    int fileTypeChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+    
+    string saveTypeOptions[2] = {"1. Save first element", "2. Save all elements"};
+    drawMenu("Select Save Type", saveTypeOptions, 2);
+    
+    int saveTypeChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+    
+    string sideOptions[2] = {"1. Save from Front", "2. Save from Back"};
+    drawMenu("Select Position to Save", sideOptions, 2);
+    
+    int sideChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+    
+    if (fileTypeChoice == 1) {
+        if (saveTypeChoice == 1) {
+            T* obj = (sideChoice == 1) ? deque.peekFirst() : deque.peekLast();
+            TextFile<T> file("people.txt");
+            try {
+                file.clearFile();
+                file.saveRecord(*obj);
+                cout << "Saved " << (sideChoice == 1 ? "first" : "last") << " object to text file: people.txt" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
+        } else {
+            TextFile<T> file("people.txt");
+            try {
+                file.clearFile();
+                
+                if (sideChoice == 1) {
+                    Deque<T*> tmp;
+                    while (!deque.isEmpty()) {
+                        T* obj = deque.peekFirst();
+                        deque.popFront();
+                        file.saveRecord(*obj);
+                        tmp.pushBack(obj);
+                    }
+                    while (!tmp.isEmpty()) {
+                        T* obj = tmp.peekFirst();
+                        tmp.popFront();
+                        deque.pushBack(obj);
+                    }
+                } else {
+                    Deque<T*> tmp;
+                    while (!deque.isEmpty()) {
+                        T* obj = deque.peekLast();
+                        deque.popBack();
+                        file.saveRecord(*obj);
+                        tmp.pushFront(obj);
+                    }
+                    while (!tmp.isEmpty()) {
+                        T* obj = tmp.peekFirst();
+                        tmp.popFront();
+                        deque.pushFront(obj);
+                    }
+                }
+                
+                cout << "Saved all objects (starting from " << (sideChoice == 1 ? "front" : "back") << ") to text file: people.txt" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
         }
-        while (!tmp.isEmpty()) {
-            T* obj = tmp.peekFirst();
-            tmp.popFront();
-            deque.pushBack(obj);
+    } else {
+        if (saveTypeChoice == 1) {
+            T* obj = (sideChoice == 1) ? deque.peekFirst() : deque.peekLast();
+            BinaryFile<T> file("people.bin");
+            try {
+                file.clearFile();
+                file.saveRecord(*obj);
+                cout << "Saved " << (sideChoice == 1 ? "first" : "last") << " object to binary file: people.bin" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
+        } else {
+            BinaryFile<T> file("people.bin");
+            try {
+                file.clearFile();
+                
+                if (sideChoice == 1) {
+                    Deque<T*> tmp;
+                    while (!deque.isEmpty()) {
+                        T* obj = deque.peekFirst();
+                        deque.popFront();
+                        file.saveRecord(*obj);
+                        tmp.pushBack(obj);
+                    }
+                    while (!tmp.isEmpty()) {
+                        T* obj = tmp.peekFirst();
+                        tmp.popFront();
+                        deque.pushBack(obj);
+                    }
+                } else {
+                    Deque<T*> tmp;
+                    while (!deque.isEmpty()) {
+                        T* obj = deque.peekLast();
+                        deque.popBack();
+                        file.saveRecord(*obj);
+                        tmp.pushFront(obj);
+                    }
+                    while (!tmp.isEmpty()) {
+                        T* obj = tmp.peekFirst();
+                        tmp.popFront();
+                        deque.pushFront(obj);
+                    }
+                }
+                
+                cout << "Saved all objects (starting from " << (sideChoice == 1 ? "front" : "back") << ") to binary file: people.bin" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
         }
-        cout << "Saved to text file: " << filename << endl;
-    } catch (const FileException& e) {
-        cout << "File error: " << e.what() << endl;
     }
 }
 
 template <typename T>
-void loadFromTextFile(Deque<T*>& deque, const string& filename) {
-    TextFile<T> file(filename);
-    try {
-        vector<T*> records = file.readAllRecords();
-        clearDeque(deque);
-        for (T* obj : records) {
-            deque.pushBack(obj);
+void loadFromFile(Deque<T*>& deque) {
+    string fileTypeOptions[2] = {"1. Text file", "2. Binary file"};
+    drawMenu("Select File Type", fileTypeOptions, 2);
+    
+    int fileTypeChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+    
+    string loadTypeOptions[2] = {"1. Load first element", "2. Load all elements"};
+    drawMenu("Select Load Type", loadTypeOptions, 2);
+    
+    int loadTypeChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+    
+    if (fileTypeChoice == 1) {
+        if (loadTypeChoice == 1) {
+            TextFile<T> file("people.txt");
+            try {
+                T* obj = file.readRecord();
+                if (obj == nullptr) {
+                    cout << "File is empty or read error." << endl;
+                    return;
+                }
+                
+                string sideOptions[2] = {"1. Insert at Front", "2. Insert at Back"};
+                drawMenu("Select Insert Position", sideOptions, 2);
+                
+                int sideChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+                
+                if (sideChoice == 1) {
+                    deque.pushFront(obj);
+                } else {
+                    deque.pushBack(obj);
+                }
+                
+                cout << "Loaded object from text file and inserted at " << (sideChoice == 1 ? "front" : "back") << ": people.txt" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
+        } else {
+            TextFile<T> file("people.txt");
+            try {
+                Deque<T*> loadedDeque = file.readAllRecords();
+                
+                if (loadedDeque.isEmpty()) {
+                    cout << "File is empty." << endl;
+                    return;
+                }
+                
+                string sideOptions[2] = {"1. Insert at Front", "2. Insert at Back"};
+                drawMenu("Select Insert Position", sideOptions, 2);
+                
+                int sideChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+                
+                if (sideChoice == 1) {
+                    Deque<T*> tmp;
+                    while (!loadedDeque.isEmpty()) {
+                        T* obj = loadedDeque.peekFirst();
+                        loadedDeque.popFront();
+                        tmp.pushFront(obj);
+                    }
+                    while (!tmp.isEmpty()) {
+                        T* obj = tmp.peekFirst();
+                        tmp.popFront();
+                        deque.pushFront(obj);
+                    }
+                } else {
+                    while (!loadedDeque.isEmpty()) {
+                        T* obj = loadedDeque.peekFirst();
+                        loadedDeque.popFront();
+                        deque.pushBack(obj);
+                    }
+                }
+                
+                cout << "Loaded all objects from text file and inserted at " << (sideChoice == 1 ? "front" : "back") << ": people.txt" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
         }
-        cout << "Loaded from text file: " << filename << endl;
-    } catch (const FileException& e) {
-        cout << "File error: " << e.what() << endl;
-    }
-}
-
-template <typename T>
-void saveToBinaryFile(Deque<T*>& deque, const string& filename) {
-    BinaryFile<T> file(filename);
-    try {
-        file.clearFile();
-        Deque<T*> tmp;
-        while (!deque.isEmpty()) {
-            T* obj = deque.peekFirst();
-            deque.popFront();
-            file.saveRecord(*obj);
-            tmp.pushBack(obj);
+    } else {
+        if (loadTypeChoice == 1) {
+            BinaryFile<T> file("people.bin");
+            try {
+                T* obj = file.readRecord();
+                if (obj == nullptr) {
+                    cout << "File is empty or read error." << endl;
+                    return;
+                }
+                
+                string sideOptions[2] = {"1. Insert at Front", "2. Insert at Back"};
+                drawMenu("Select Insert Position", sideOptions, 2);
+                
+                int sideChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+                
+                if (sideChoice == 1) {
+                    deque.pushFront(obj);
+                } else {
+                    deque.pushBack(obj);
+                }
+                
+                cout << "Loaded object from binary file and inserted at " << (sideChoice == 1 ? "front" : "back") << ": people.bin" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
+        } else {
+            BinaryFile<T> file("people.bin");
+            try {
+                Deque<T*> loadedDeque = file.readAllRecords();
+                
+                if (loadedDeque.isEmpty()) {
+                    cout << "File is empty." << endl;
+                    return;
+                }
+                
+                string sideOptions[2] = {"1. Insert at Front", "2. Insert at Back"};
+                drawMenu("Select Insert Position", sideOptions, 2);
+                
+                int sideChoice = safeInputNumeric<int>(cin, 1, 2, "Enter choice (1-2): ");
+                
+                if (sideChoice == 1) {
+                    Deque<T*> tmp;
+                    while (!loadedDeque.isEmpty()) {
+                        T* obj = loadedDeque.peekFirst();
+                        loadedDeque.popFront();
+                        tmp.pushFront(obj);
+                    }
+                    while (!tmp.isEmpty()) {
+                        T* obj = tmp.peekFirst();
+                        tmp.popFront();
+                        deque.pushFront(obj);
+                    }
+                } else {
+                    while (!loadedDeque.isEmpty()) {
+                        T* obj = loadedDeque.peekFirst();
+                        loadedDeque.popFront();
+                        deque.pushBack(obj);
+                    }
+                }
+                
+                cout << "Loaded all objects from binary file and inserted at " << (sideChoice == 1 ? "front" : "back") << ": people.bin" << endl;
+            } catch (const FileException& e) {
+                cout << "File error: " << e.what() << endl;
+            }
         }
-        while (!tmp.isEmpty()) {
-            T* obj = tmp.peekFirst();
-            tmp.popFront();
-            deque.pushBack(obj);
-        }
-        cout << "Saved to binary file: " << filename << endl;
-    } catch (const FileException& e) {
-        cout << "File error: " << e.what() << endl;
-    }
-}
-
-template <typename T>
-void loadFromBinaryFile(Deque<T*>& deque, const string& filename) {
-    BinaryFile<T> file(filename);
-    try {
-        vector<T*> records = file.readAllRecords();
-        clearDeque(deque);
-        for (T* obj : records) {
-            deque.pushBack(obj);
-        }
-        cout << "Loaded from binary file: " << filename << endl;
-    } catch (const FileException& e) {
-        cout << "File error: " << e.what() << endl;
     }
 }
 
@@ -410,7 +600,7 @@ template <typename T>
 void runForType(const string& typeName) {
     Deque<T*> myDeque;
     int choice;
-    string mainMenuOptions[12] = {
+    string mainMenuOptions[10] = {
         "1. Add Object",
         "2. Remove Object",
         "3. Modify Object",
@@ -418,17 +608,15 @@ void runForType(const string& typeName) {
         "5. Print Deque",
         "6. Search",
         "7. Sort",
-        "8. Save to text file (people.txt)",
-        "9. Load from text file (people.txt)",
-        "10. Save to binary file (people.bin)",
-        "11. Load from binary file (people.bin)",
-        "12. Exit"
+        "8. Save to File",
+        "9. Load from File",
+        "10. Exit"
     };
 
     do {
-        drawMenu("Main Menu - " + typeName, mainMenuOptions, 12);
+        drawMenu("Main Menu - " + typeName, mainMenuOptions, 10);
 
-        choice = safeInputNumeric<int>(cin, 1, 12, "Enter choice (1-12): ");
+        choice = safeInputNumeric<int>(cin, 1, 10, "Enter choice (1-10): ");
 
         switch (choice) {
             case 1: addObject(myDeque); break;
@@ -438,13 +626,11 @@ void runForType(const string& typeName) {
             case 5: printDeque(myDeque); break;
             case 6: searchInDeque(myDeque); break;
             case 7: sortDequeByField(myDeque); break;
-            case 8: saveToTextFile(myDeque, "people.txt"); break;
-            case 9: loadFromTextFile(myDeque, "people.txt"); break;
-            case 10: saveToBinaryFile(myDeque, "people.bin"); break;
-            case 11: loadFromBinaryFile(myDeque, "people.bin"); break;
-            case 12: clearDeque(myDeque); break;
+            case 8: saveToFile(myDeque); break;
+            case 9: loadFromFile(myDeque); break;
+            case 10: clearDeque(myDeque); break;
         }
-    } while (choice != 12);
+    } while (choice != 10);
 }
 
 void run() {

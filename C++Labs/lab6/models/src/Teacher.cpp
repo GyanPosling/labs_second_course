@@ -178,146 +178,92 @@ istream& operator>>(istream& is, UniversityTeacher& teacher) {
 
 void UniversityTeacher::saveTextRecord(ostream& os) const {
     Human::saveTextRecord(os);
-    os << ';'
-       << position << ';'
-       << academicDegree << ';'
-       << specialty << ';'
-       << scientificWorksCount;
+    os << "POSITION|" << position << "|\n";
+    os << "DEGREE|" << academicDegree << "|\n";
+    os << "SPECIALTY|" << specialty << "|\n";
+    os << "SCI_WORKS_COUNT|" << scientificWorksCount << "|\n";
     for (int i = 0; i < scientificWorksCount; ++i) {
-        os << ';' << scientificWorks[i];
-    }
-}
-
-UniversityTeacher* UniversityTeacher::readTextRecord(istream& is) {
-    string line;
-    if (!getline(is, line)) {
-        return nullptr;
-    }
-    if (line.empty()) {
-        return nullptr;
-    }
-
-    istringstream iss(line);
-    string first, last, middle, dateStr;
-    string pos, degree, spec, countStr;
-
-    if (!getline(iss, first, ';') ||
-        !getline(iss, last, ';') ||
-        !getline(iss, middle, ';') ||
-        !getline(iss, dateStr, ';') ||
-        !getline(iss, pos, ';') ||
-        !getline(iss, degree, ';') ||
-        !getline(iss, spec, ';') ||
-        !getline(iss, countStr, ';')) {
-        throw FileException(80, "Invalid UniversityTeacher text record format");
-    }
-
-    Date birth;
-    {
-        istringstream ds(dateStr);
-        ds >> birth;
-    }
-
-    int count = 0;
-    try {
-        count = stoi(countStr);
-    } catch (...) {
-        throw FileException(81, "Invalid scientific works count in text record");
-    }
-
-    UniversityTeacher* t = new UniversityTeacher(first, last, middle, birth, pos, degree, spec);
-    t->scientificWorksCount = 0;
-
-    for (int i = 0; i < count && i < SCIENTIFIC_WORKS_SIZE; ++i) {
-        string work;
-        if (!getline(iss, work, ';')) {
-            delete t;
-            throw FileException(82, "Invalid scientific work entry in text record");
-        }
-        t->addScientificWork(work);
-    }
-
-    return t;
-}
-
-namespace {
-    void writeIntUT(ostream& os, int value) {
-        os.write(reinterpret_cast<const char*>(&value), sizeof(value));
-    }
-
-    int readIntUT(istream& is) {
-        int value = 0;
-        if (!is.read(reinterpret_cast<char*>(&value), sizeof(value))) {
-            throw FileException(83, "Error reading integer from binary file");
-        }
-        return value;
-    }
-
-    void writeStringUT(ostream& os, const string& s) {
-        int len = static_cast<int>(s.size());
-        writeIntUT(os, len);
-        if (len > 0) {
-            os.write(s.data(), len);
-        }
-    }
-
-    string readStringUT(istream& is) {
-        int len = readIntUT(is);
-        if (len < 0) {
-            throw FileException(84, "Negative string length in binary file");
-        }
-        string s;
-        s.resize(len);
-        if (len > 0) {
-            if (!is.read(&s[0], len)) {
-                throw FileException(85, "Error reading string data from binary file");
-            }
-        }
-        return s;
+        os << "SCI_WORK_" << (i + 1) << "|" << scientificWorks[i] << "|\n";
     }
 }
 
 void UniversityTeacher::saveBinaryRecord(ostream& os) const {
-    writeStringUT(os, firstName);
-    writeStringUT(os, lastName);
-    writeStringUT(os, middleName);
-    writeStringUT(os, birthday.toString());
-    writeStringUT(os, position);
-    writeStringUT(os, academicDegree);
-    writeStringUT(os, specialty);
-    writeIntUT(os, scientificWorksCount);
+    Human::saveBinaryRecord(os);
+    
+    int len = static_cast<int>(position.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(position.data(), len);
+    
+    len = static_cast<int>(academicDegree.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(academicDegree.data(), len);
+    
+    len = static_cast<int>(specialty.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(specialty.data(), len);
+    
+    os.write(reinterpret_cast<const char*>(&scientificWorksCount), sizeof(scientificWorksCount));
+    
     for (int i = 0; i < scientificWorksCount; ++i) {
-        writeStringUT(os, scientificWorks[i]);
+        len = static_cast<int>(scientificWorks[i].size());
+        os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        if (len > 0) os.write(scientificWorks[i].data(), len);
     }
 }
 
-UniversityTeacher* UniversityTeacher::readBinaryRecord(istream& is) {
-    if (is.peek() == EOF) {
-        return nullptr;
+void UniversityTeacher::loadFromText(istream& is) {
+    Human::loadFromText(is);
+    
+    string line;
+    getline(is, line);
+    position = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    academicDegree = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    specialty = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    string countStr = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    scientificWorksCount = stoi(countStr);
+    
+    for (int i = 0; i < scientificWorksCount && i < SCIENTIFIC_WORKS_SIZE; ++i) {
+        getline(is, line);
+        scientificWorks[i] = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
     }
+}
 
-    string first = readStringUT(is);
-    string last = readStringUT(is);
-    string middle = readStringUT(is);
-    string dateStr = readStringUT(is);
-    string pos = readStringUT(is);
-    string degree = readStringUT(is);
-    string spec = readStringUT(is);
-    int count = readIntUT(is);
-
-    Date birth;
-    {
-        istringstream ds(dateStr);
-        ds >> birth;
+void UniversityTeacher::loadFromBinary(istream& is) {
+    Human::loadFromBinary(is);
+    
+    int len;
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        position.resize(len);
+        is.read(&position[0], len);
     }
-
-    UniversityTeacher* t = new UniversityTeacher(first, last, middle, birth, pos, degree, spec);
-    t->scientificWorksCount = 0;
-
-    for (int i = 0; i < count && i < SCIENTIFIC_WORKS_SIZE; ++i) {
-        string work = readStringUT(is);
-        t->addScientificWork(work);
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        academicDegree.resize(len);
+        is.read(&academicDegree[0], len);
     }
-
-    return t;
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        specialty.resize(len);
+        is.read(&specialty[0], len);
+    }
+    
+    is.read(reinterpret_cast<char*>(&scientificWorksCount), sizeof(scientificWorksCount));
+    
+    for (int i = 0; i < scientificWorksCount && i < SCIENTIFIC_WORKS_SIZE; ++i) {
+        is.read(reinterpret_cast<char*>(&len), sizeof(len));
+        if (len > 0) {
+            scientificWorks[i].resize(len);
+            is.read(&scientificWorks[i][0], len);
+        }
+    }
 }

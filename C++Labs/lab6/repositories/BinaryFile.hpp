@@ -2,8 +2,8 @@
 
 #include "File.hpp"
 #include <fstream>
-#include <vector>
 #include <string>
+#include "../templates/include/Deque.hpp"
 
 using namespace std;
 
@@ -16,7 +16,7 @@ public:
 
     void saveRecord(const T& object);
     T* readRecord();
-    vector<T*> readAllRecords();
+    Deque<T*> readAllRecords();
     void clearFile() const;
     void openFile(fstream& file, ios_base::openmode mode) const;
 };

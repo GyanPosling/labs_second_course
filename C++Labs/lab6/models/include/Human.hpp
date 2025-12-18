@@ -49,11 +49,11 @@ public:
 
     virtual void updateField(int fieldChoice);
 
-    void saveTextRecord(ostream& os) const;
-    static Human* readTextRecord(istream& is);
-
-    void saveBinaryRecord(ostream& os) const;
-    static Human* readBinaryRecord(istream& is);
+    virtual void saveTextRecord(ostream& os) const;
+    virtual void saveBinaryRecord(ostream& os) const;
+    
+    virtual void loadFromText(istream& is);
+    virtual void loadFromBinary(istream& is);
 
     friend ostream& operator<<(ostream& os, const Human& member);
     friend istream& operator>>(istream& is, Human& member);

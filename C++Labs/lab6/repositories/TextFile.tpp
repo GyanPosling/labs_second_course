@@ -1,64 +1,74 @@
-#include "../exceptions/include/FileException.hpp"
-#include <sstream>
+#pragma once
+
+#include "TextFile.hpp"
+#include <fstream>
+#include <string>
+#include "../templates/include/Deque.hpp"
+
+using namespace std;
 
 template <typename T>
-void TextFile<T>::clearFile() const
-{
-    ofstream file(filename, ios::out | ios::trunc);
-    if (!file.is_open())
-    {
-        throw FileException(60, "Error clear file: " + filename);
-    }
-    file.close();
-}
-
-template <typename T>
-void TextFile<T>::openFile(fstream& file, ios_base::openmode mode) const
-{
-    file.open(filename, mode);
-    if (!file.is_open())
-    {
-        throw FileException(61, "Error open file: " + filename);
-    }
-}
-
-template <typename T>
-void TextFile<T>::saveRecord(const T& object)
-{
+void TextFile<T>::saveRecord(const T& object) {
     fstream file;
     openFile(file, ios::out | ios::app);
-    const_cast<T&>(object).saveTextRecord(file);
-    file << '\n';
-    file.close();
+    if (file.is_open()) {
+        object.saveTextRecord(file);
+        file << "\n";
+    }
 }
 
 template <typename T>
-T* TextFile<T>::readRecord()
-{
+T* TextFile<T>::readRecord() {
     fstream file;
     openFile(file, ios::in);
-    T* object = T::readTextRecord(file);
-    file.close();
+    if (!file.is_open()) {
+        return nullptr;
+    }
+    
+    if (file.peek() == EOF) {
+        return nullptr;
+    }
+    
+    T* object = new T();
+    object->loadFromText(file);
+    
+    string dummy;
+    getline(file, dummy);
+    
     return object;
 }
 
 template <typename T>
-vector<T*> TextFile<T>::readAllRecords()
-{
-    vector<T*> records;
+Deque<T*> TextFile<T>::readAllRecords() {
+    Deque<T*> deque;
     fstream file;
     openFile(file, ios::in);
-
-    while (true)
-    {
-        T* object = T::readTextRecord(file);
-        if (object == nullptr)
-        {
-            break;
-        }
-        records.push_back(object);
+    
+    if (!file.is_open()) {
+        return deque;
     }
+    
+    while (file.peek() != EOF) {
+        T* object = new T();
+        object->loadFromText(file);
+        deque.pushBack(object);
+        
+        string dummy;
+        getline(file, dummy);
+    }
+    
+    return deque;
+}
 
-    file.close();
-    return records;
+template <typename T>
+void TextFile<T>::clearFile() const {
+    ofstream file(filename, ios::out | ios::trunc);
+}
+
+template <typename T>
+void TextFile<T>::openFile(fstream& file, ios_base::openmode mode) const {
+    file.open(filename, mode);
+    if (!file.is_open()) {
+        throw FileException(50, "Failed to open file: " + filename);
+    }
 }

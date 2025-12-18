@@ -124,102 +124,78 @@ void Human::updateField(int fieldChoice) {
     }
 }
 
-namespace {
-    void writeInt(ostream& os, int value) {
-        os.write(reinterpret_cast<const char*>(&value), sizeof(value));
-    }
-
-    int readInt(istream& is) {
-        int value = 0;
-        if (!is.read(reinterpret_cast<char*>(&value), sizeof(value))) {
-            throw FileException(70, "Error reading integer from binary file");
-        }
-        return value;
-    }
-
-    void writeString(ostream& os, const string& s) {
-        int len = static_cast<int>(s.size());
-        writeInt(os, len);
-        if (len > 0) {
-            os.write(s.data(), len);
-        }
-    }
-
-    string readString(istream& is) {
-        int len = readInt(is);
-        if (len < 0) {
-            throw FileException(71, "Negative string length in binary file");
-        }
-        string s;
-        s.resize(len);
-        if (len > 0) {
-            if (!is.read(&s[0], len)) {
-                throw FileException(72, "Error reading string data from binary file");
-            }
-        }
-        return s;
-    }
-}
-
 void Human::saveTextRecord(ostream& os) const {
-    os << firstName << ';'
-       << lastName << ';'
-       << middleName << ';'
-       << birthday.toString();
-}
-
-Human* Human::readTextRecord(istream& is) {
-    string line;
-    if (!std::getline(is, line)) {
-        return nullptr;
-    }
-    if (line.empty()) {
-        return nullptr;
-    }
-
-    istringstream iss(line);
-    string first, last, middle, dateStr;
-
-    if (!std::getline(iss, first, ';') ||
-        !std::getline(iss, last, ';') ||
-        !std::getline(iss, middle, ';') ||
-        !std::getline(iss, dateStr, ';')) {
-        throw FileException(73, "Invalid Human text record format");
-    }
-
-    Date birth;
-    {
-        istringstream ds(dateStr);
-        ds >> birth;
-    }
-
-    Human* h = new Human(first, last, middle, birth);
-    return h;
+    os << "FIRST_NAME|" << firstName << "|\n";
+    os << "LAST_NAME|" << lastName << "|\n";
+    os << "MIDDLE_NAME|" << middleName << "|\n";
+    os << "BIRTHDAY|" << birthday.toString() << "|\n";
 }
 
 void Human::saveBinaryRecord(ostream& os) const {
-    writeString(os, firstName);
-    writeString(os, lastName);
-    writeString(os, middleName);
-    writeString(os, birthday.toString());
+    int len;
+    
+    len = static_cast<int>(firstName.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(firstName.data(), len);
+    
+    len = static_cast<int>(lastName.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(lastName.data(), len);
+    
+    len = static_cast<int>(middleName.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(middleName.data(), len);
+    
+    string dateStr = birthday.toString();
+    len = static_cast<int>(dateStr.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(dateStr.data(), len);
 }
 
-Human* Human::readBinaryRecord(istream& is) {
-    if (is.peek() == EOF) {
-        return nullptr;
+void Human::loadFromText(istream& is) {
+    string line;
+    getline(is, line);
+    firstName = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    lastName = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    middleName = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    string dateStr = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    istringstream ds(dateStr);
+    ds >> birthday;
+}
+
+void Human::loadFromBinary(istream& is) {
+    int len;
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        firstName.resize(len);
+        is.read(&firstName[0], len);
     }
-
-    string first = readString(is);
-    string last = readString(is);
-    string middle = readString(is);
-    string dateStr = readString(is);
-
-    Date birth;
-    {
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        lastName.resize(len);
+        is.read(&lastName[0], len);
+    }
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        middleName.resize(len);
+        is.read(&middleName[0], len);
+    }
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        string dateStr;
+        dateStr.resize(len);
+        is.read(&dateStr[0], len);
         istringstream ds(dateStr);
-        ds >> birth;
+        ds >> birthday;
     }
-
-    Human* h = new Human(first, last, middle, birth);
-    return h;
 }

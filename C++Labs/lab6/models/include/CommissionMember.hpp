@@ -39,11 +39,11 @@ public:
 
     void updateField(int fieldChoice) override;
 
-    void saveTextRecord(ostream& os) const;
-    static CommissionMember* readTextRecord(istream& is);
-
-    void saveBinaryRecord(ostream& os) const;
-    static CommissionMember* readBinaryRecord(istream& is);
+    void saveTextRecord(ostream& os) const override;
+    void saveBinaryRecord(ostream& os) const override;
+    
+    void loadFromText(istream& is) override;
+    void loadFromBinary(istream& is) override;
 
     friend istream& operator>>(istream& is, CommissionMember& member);
 };

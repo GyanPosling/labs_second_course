@@ -239,245 +239,130 @@ istream& operator>>(istream& is, TeacherCommissionMember& member) {
 }
 
 void TeacherCommissionMember::saveTextRecord(ostream& os) const {
-    Human::saveTextRecord(os);
-    os << ';'
-       << position << ';'
-       << academicDegree << ';'
-       << specialty << ';'
-       << scientificWorksCount;
-    for (int i = 0; i < scientificWorksCount; ++i) {
-        os << ';' << scientificWorks[i];
-    }
-    os << ';'
-       << commissionName << ';'
-       << appointmentDate.toString() << ';'
-       << certificateNumber << ';'
-       << autobiographyCount;
+    UniversityTeacher::saveTextRecord(os);
+    os << "COMMISSION|" << commissionName << "|\n";
+    os << "APPOINTMENT_DATE|" << appointmentDate.toString() << "|\n";
+    os << "CERTIFICATE|" << certificateNumber << "|\n";
+    os << "AUTOBIOGRAPHY_COUNT|" << autobiographyCount << "|\n";
     for (int i = 0; i < autobiographyCount; ++i) {
-        os << ';' << autobiography[i];
+        os << "AUTOBIOGRAPHY_" << (i + 1) << "|" << autobiography[i] << "|\n";
     }
-    os << ';'
-       << commissionWorksCount;
+    os << "COMMISSION_WORKS_COUNT|" << commissionWorksCount << "|\n";
     for (int i = 0; i < commissionWorksCount; ++i) {
-        os << ';' << commissionWorks[i];
-    }
-}
-
-TeacherCommissionMember* TeacherCommissionMember::readTextRecord(istream& is) {
-    string line;
-    if (!getline(is, line)) {
-        return nullptr;
-    }
-    if (line.empty()) {
-        return nullptr;
-    }
-
-    istringstream iss(line);
-    string first, last, middle, dateStr;
-    string pos, degree, spec, sciCountStr;
-    string comm, appDateStr, cert, autoCountStr;
-    string worksCountStr;
-
-    if (!getline(iss, first, ';') ||
-        !getline(iss, last, ';') ||
-        !getline(iss, middle, ';') ||
-        !getline(iss, dateStr, ';') ||
-        !getline(iss, pos, ';') ||
-        !getline(iss, degree, ';') ||
-        !getline(iss, spec, ';') ||
-        !getline(iss, sciCountStr, ';')) {
-        throw FileException(100, "Invalid TeacherCommissionMember text record format (header)");
-    }
-
-    Date birth;
-    {
-        istringstream ds(dateStr);
-        ds >> birth;
-    }
-
-    int sciCount = 0;
-    try {
-        sciCount = stoi(sciCountStr);
-    } catch (...) {
-        throw FileException(101, "Invalid scientific works count in text record");
-    }
-
-    if (!getline(iss, comm, ';') ||
-        !getline(iss, appDateStr, ';') ||
-        !getline(iss, cert, ';') ||
-        !getline(iss, autoCountStr, ';')) {
-        throw FileException(102, "Invalid TeacherCommissionMember text record format (commission)");
-    }
-
-    Date appDate;
-    {
-        istringstream ds(appDateStr);
-        ds >> appDate;
-    }
-
-    int autoCount = 0;
-    try {
-        autoCount = stoi(autoCountStr);
-    } catch (...) {
-        throw FileException(103, "Invalid autobiography count in text record");
-    }
-
-    if (!getline(iss, worksCountStr, ';')) {
-        throw FileException(104, "Invalid TeacherCommissionMember text record format (works count)");
-    }
-
-    int worksCount = 0;
-    try {
-        worksCount = stoi(worksCountStr);
-    } catch (...) {
-        throw FileException(105, "Invalid commission works count in text record");
-    }
-
-    TeacherCommissionMember* m = new TeacherCommissionMember(first, last, middle, birth, pos, degree, spec, comm, appDate, cert);
-    m->scientificWorksCount = 0;
-    for (int i = 0; i < sciCount && i < SCIENTIFIC_WORKS_SIZE; ++i) {
-        string work;
-        if (!getline(iss, work, ';')) {
-            delete m;
-            throw FileException(106, "Invalid scientific work entry in text record");
-        }
-        m->addScientificWork(work);
-    }
-
-    m->autobiographyCount = 0;
-    for (int i = 0; i < autoCount && i < AUTOBIOGRAPHY_SIZE; ++i) {
-        string bio;
-        if (!getline(iss, bio, ';')) {
-            delete m;
-            throw FileException(107, "Invalid autobiography entry in text record");
-        }
-        m->addAutobiography(bio);
-    }
-
-    m->commissionWorksCount = 0;
-    for (int i = 0; i < worksCount && i < COMMISSION_WORKS_SIZE; ++i) {
-        string work;
-        if (!getline(iss, work, ';')) {
-            delete m;
-            throw FileException(108, "Invalid commission work entry in text record");
-        }
-        m->addCommissionWork(work);
-    }
-
-    return m;
-}
-
-namespace {
-    void writeIntTCM(ostream& os, int value) {
-        os.write(reinterpret_cast<const char*>(&value), sizeof(value));
-    }
-
-    int readIntTCM(istream& is) {
-        int value = 0;
-        if (!is.read(reinterpret_cast<char*>(&value), sizeof(value))) {
-            throw FileException(109, "Error reading integer from binary file");
-        }
-        return value;
-    }
-
-    void writeStringTCM(ostream& os, const string& s) {
-        int len = static_cast<int>(s.size());
-        writeIntTCM(os, len);
-        if (len > 0) {
-            os.write(s.data(), len);
-        }
-    }
-
-    string readStringTCM(istream& is) {
-        int len = readIntTCM(is);
-        if (len < 0) {
-            throw FileException(110, "Negative string length in binary file");
-        }
-        string s;
-        s.resize(len);
-        if (len > 0) {
-            if (!is.read(&s[0], len)) {
-                throw FileException(111, "Error reading string data from binary file");
-            }
-        }
-        return s;
+        os << "COMMISSION_WORK_" << (i + 1) << "|" << commissionWorks[i] << "|\n";
     }
 }
 
 void TeacherCommissionMember::saveBinaryRecord(ostream& os) const {
-    writeStringTCM(os, firstName);
-    writeStringTCM(os, lastName);
-    writeStringTCM(os, middleName);
-    writeStringTCM(os, birthday.toString());
-    writeStringTCM(os, position);
-    writeStringTCM(os, academicDegree);
-    writeStringTCM(os, specialty);
-    writeIntTCM(os, scientificWorksCount);
-    for (int i = 0; i < scientificWorksCount; ++i) {
-        writeStringTCM(os, scientificWorks[i]);
-    }
-    writeStringTCM(os, commissionName);
-    writeStringTCM(os, appointmentDate.toString());
-    writeStringTCM(os, certificateNumber);
-    writeIntTCM(os, autobiographyCount);
+    UniversityTeacher::saveBinaryRecord(os);
+    
+    int len = static_cast<int>(commissionName.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(commissionName.data(), len);
+    
+    string appDateStr = appointmentDate.toString();
+    len = static_cast<int>(appDateStr.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(appDateStr.data(), len);
+    
+    len = static_cast<int>(certificateNumber.size());
+    os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+    if (len > 0) os.write(certificateNumber.data(), len);
+    
+    os.write(reinterpret_cast<const char*>(&autobiographyCount), sizeof(autobiographyCount));
+    
     for (int i = 0; i < autobiographyCount; ++i) {
-        writeStringTCM(os, autobiography[i]);
+        len = static_cast<int>(autobiography[i].size());
+        os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        if (len > 0) os.write(autobiography[i].data(), len);
     }
-    writeIntTCM(os, commissionWorksCount);
+    
+    os.write(reinterpret_cast<const char*>(&commissionWorksCount), sizeof(commissionWorksCount));
+    
     for (int i = 0; i < commissionWorksCount; ++i) {
-        writeStringTCM(os, commissionWorks[i]);
+        len = static_cast<int>(commissionWorks[i].size());
+        os.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        if (len > 0) os.write(commissionWorks[i].data(), len);
     }
 }
 
-TeacherCommissionMember* TeacherCommissionMember::readBinaryRecord(istream& is) {
-    if (is.peek() == EOF) {
-        return nullptr;
+void TeacherCommissionMember::loadFromText(istream& is) {
+    UniversityTeacher::loadFromText(is);
+    
+    string line;
+    getline(is, line);
+    commissionName = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    string appDateStr = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    istringstream ds(appDateStr);
+    ds >> appointmentDate;
+    
+    getline(is, line);
+    certificateNumber = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    
+    getline(is, line);
+    string countStr = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    autobiographyCount = stoi(countStr);
+    
+    for (int i = 0; i < autobiographyCount && i < AUTOBIOGRAPHY_SIZE; ++i) {
+        getline(is, line);
+        autobiography[i] = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
     }
-
-    string first = readStringTCM(is);
-    string last = readStringTCM(is);
-    string middle = readStringTCM(is);
-    string dateStr = readStringTCM(is);
-    string pos = readStringTCM(is);
-    string degree = readStringTCM(is);
-    string spec = readStringTCM(is);
-    int sciCount = readIntTCM(is);
-    string comm = readStringTCM(is);
-    string appDateStr = readStringTCM(is);
-    string cert = readStringTCM(is);
-    int autoCount = readIntTCM(is);
-    int worksCount = readIntTCM(is);
-
-    Date birth;
-    {
-        istringstream ds(dateStr);
-        ds >> birth;
+    
+    getline(is, line);
+    countStr = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
+    commissionWorksCount = stoi(countStr);
+    
+    for (int i = 0; i < commissionWorksCount && i < COMMISSION_WORKS_SIZE; ++i) {
+        getline(is, line);
+        commissionWorks[i] = line.substr(line.find('|') + 1, line.rfind('|') - line.find('|') - 1);
     }
+}
 
-    Date appDate;
-    {
+void TeacherCommissionMember::loadFromBinary(istream& is) {
+    UniversityTeacher::loadFromBinary(is);
+    
+    int len;
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        commissionName.resize(len);
+        is.read(&commissionName[0], len);
+    }
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        string appDateStr;
+        appDateStr.resize(len);
+        is.read(&appDateStr[0], len);
         istringstream ds(appDateStr);
-        ds >> appDate;
+        ds >> appointmentDate;
     }
-
-    TeacherCommissionMember* m = new TeacherCommissionMember(first, last, middle, birth, pos, degree, spec, comm, appDate, cert);
-    m->scientificWorksCount = 0;
-    for (int i = 0; i < sciCount && i < SCIENTIFIC_WORKS_SIZE; ++i) {
-        string work = readStringTCM(is);
-        m->addScientificWork(work);
+    
+    is.read(reinterpret_cast<char*>(&len), sizeof(len));
+    if (len > 0) {
+        certificateNumber.resize(len);
+        is.read(&certificateNumber[0], len);
     }
-
-    m->autobiographyCount = 0;
-    for (int i = 0; i < autoCount && i < AUTOBIOGRAPHY_SIZE; ++i) {
-        string bio = readStringTCM(is);
-        m->addAutobiography(bio);
+    
+    is.read(reinterpret_cast<char*>(&autobiographyCount), sizeof(autobiographyCount));
+    
+    for (int i = 0; i < autobiographyCount && i < AUTOBIOGRAPHY_SIZE; ++i) {
+        is.read(reinterpret_cast<char*>(&len), sizeof(len));
+        if (len > 0) {
+            autobiography[i].resize(len);
+            is.read(&autobiography[i][0], len);
+        }
     }
-
-    m->commissionWorksCount = 0;
-    for (int i = 0; i < worksCount && i < COMMISSION_WORKS_SIZE; ++i) {
-        string work = readStringTCM(is);
-        m->addCommissionWork(work);
+    
+    is.read(reinterpret_cast<char*>(&commissionWorksCount), sizeof(commissionWorksCount));
+    
+    for (int i = 0; i < commissionWorksCount && i < COMMISSION_WORKS_SIZE; ++i) {
+        is.read(reinterpret_cast<char*>(&len), sizeof(len));
+        if (len > 0) {
+            commissionWorks[i].resize(len);
+            is.read(&commissionWorks[i][0], len);
+        }
     }
-
-    return m;
 }
