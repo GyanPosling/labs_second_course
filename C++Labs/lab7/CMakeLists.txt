@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(lab6)
+project(lab7)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -40,6 +40,8 @@ set(HEADERS
     repositories/BinaryFile.hpp
     repositories/TextFile.tpp
     repositories/BinaryFile.tpp
+    algorithms/Algorithm.hpp
+    algorithms/Algorithm.tpp
 )
 
-add_executable(lab6 ${SOURCES} ${HEADERS})
+add_executable(lab7 ${SOURCES} ${HEADERS})

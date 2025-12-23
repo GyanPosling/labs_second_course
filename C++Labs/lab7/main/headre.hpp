@@ -2,11 +2,13 @@
 #include <string>
 #include <iomanip>
 #include <vector>
+#include <list>
 #include "../models/include/Human.hpp"
 #include "../models/include/Teacher.hpp"
 #include "../models/include/CommissionMember.hpp"
 #include "../models/include/TeacherCommissionMember.hpp"
 #include "../templates/include/Deque.hpp"
+#include "../algorithms/Algorithm.hpp"
 #include "../exceptions/include/InputHandler.hpp"
 #include "../exceptions/include/Date.hpp"
 #include "../exceptions/include/InputException.hpp"
@@ -229,46 +231,51 @@ void searchInDeque(Deque<T*>& deque) {
     string searchString;
     Date searchDate;
 
-    T* searchObj = new T();
+    T searchObj;
 
     if (choice == 1) {
         searchString = safeGetLine(cin, currentLang, "Enter last name to search (English only): ");
-        searchObj->setLastName(searchString);
+        searchObj.setLastName(searchString);
         Human::setSearchMode(LAST_NAME);
     } else if (choice == 2) {
         searchString = safeGetLine(cin, currentLang, "Enter first name to search (English only): ");
-        searchObj->setFirstName(searchString);
+        searchObj.setFirstName(searchString);
         Human::setSearchMode(FIRST_NAME);
     } else if (choice == 3) {
         searchString = safeGetLine(cin, currentLang, "Enter middle name to search (English only): ");
-        searchObj->setMiddleName(searchString);
+        searchObj.setMiddleName(searchString);
         Human::setSearchMode(MIDDLE_NAME);
     } else if (choice == 4) {
         searchDate = safeInputDate(cin, "DD/MM/YYYY", "Enter birthday to search: ");
-        searchObj->setBirthday(searchDate);
+        searchObj.setBirthday(searchDate);
         Human::setSearchMode(BIRTH_YEAR);
     } else {
         cout << "Enter criteria for Full Match:" << endl;
 
         searchString = safeGetLine(cin, currentLang, "Enter last name (English only): ");
-        searchObj->setLastName(searchString);
+        searchObj.setLastName(searchString);
 
         searchString = safeGetLine(cin, currentLang, "Enter first name (English only): ");
-        searchObj->setFirstName(searchString);
+        searchObj.setFirstName(searchString);
 
         searchString = safeGetLine(cin, currentLang, "Enter middle name (English only): ");
-        searchObj->setMiddleName(searchString);
+        searchObj.setMiddleName(searchString);
 
         searchDate = safeInputDate(cin, "DD/MM/YYYY", "Enter birthday: ");
-        searchObj->setBirthday(searchDate);
+        searchObj.setBirthday(searchDate);
 
         Human::setSearchMode(FULL_MATCH);
     }
 
-    Deque<T*> searchResults = deque.find(searchObj);
+    Algorithm<T*> algorithm;
+    list<T*> items;
+    for (auto it = deque.begin(); it != deque.end(); ++it) {
+        items.push_back(*it);
+    }
+
+    Deque<T*> searchResults = algorithm.find(items.begin(), items.end(), searchObj);
 
     Human::setSearchMode(FULL_MATCH);
-    delete searchObj;
 
     if (searchResults.isEmpty()) {
         cout << "No matches found." << endl;
@@ -320,7 +327,10 @@ void sortDequeByField(Deque<T*>& deque) {
         return;
     }
 
-    deque.sort();
+    Algorithm<T*> algorithm;
+    algorithm.sort(deque.begin(), deque.end(), [](T* a, T* b) {
+        return *a < *b;
+    });
 
     Human::setSearchMode(LAST_NAME);
 
@@ -595,7 +605,6 @@ void loadFromFile(Deque<T*>& deque) {
         }
     }
 }
-
 
 template <typename T>
 void runForType(const string& typeName) {
