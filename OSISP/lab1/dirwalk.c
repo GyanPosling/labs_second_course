@@ -11,8 +11,8 @@
 
 static void print_usage(const char *prog) {
     fprintf(stderr,
-        "Usage: %s [dir] [options]\\n"
-        "Options: -l (symlinks) -d (directories) -f (files) -s (sort)\\n",
+        "Usage: %s [dir] [options]\n"
+        "Options: -l (symlinks) -d (directories) -f (files) -s (sort)\n",
         prog);
 }
 
@@ -28,7 +28,7 @@ static char *build_path(const char *base, const char *name) {
     int slash = (bl > 0 && base[bl - 1] != '/');
 
     char *result = malloc(bl + slash + nl + 1);
-    if (!result) return NULL
+    if (!result) return NULL;
 
     memcpy(result, base, bl);
     if (slash) {
@@ -52,13 +52,15 @@ int scan_directory(const char *path, const ProgramOptions *opts, PathList *outpu
     struct stat st;
 
     if (lstat(path, &st) != 0) {
-        fprintf(stderr, "dirwalk: %s: %s\\n", path, strerror(errno));
+        fprintf(stderr, "dirwalk: %s: %s", path, strerror(errno));
+        fputc('\n', stderr);
         return 1;
     }
 
     if (file_matches_filter(st.st_mode, opts->type_mask)) {
         if (!pathlist_add(output, path)) {
-            fprintf(stderr, "dirwalk: memory allocation failed\\n");
+            fputs("dirwalk: memory allocation failed", stderr);
+            fputc('\n', stderr);
             return 1;
         }
     }
@@ -68,7 +70,8 @@ int scan_directory(const char *path, const ProgramOptions *opts, PathList *outpu
 
     DIR *dir = opendir(path);
     if (!dir) {
-        fprintf(stderr, "dirwalk: cannot open %s: %s\\n", path, strerror(errno));
+        fprintf(stderr, "dirwalk: cannot open %s: %s", path, strerror(errno));
+        fputc('\n', stderr);
         return 1;
     }
 
@@ -92,7 +95,8 @@ int scan_directory(const char *path, const ProgramOptions *opts, PathList *outpu
     }
 
     if (errno != 0) {
-        fprintf(stderr, "dirwalk: readdir error: %s\\n", strerror(errno));
+        fprintf(stderr, "dirwalk: readdir error: %s", strerror(errno));
+        fputc('\n', stderr);
         had_error = 1;
     }
 
