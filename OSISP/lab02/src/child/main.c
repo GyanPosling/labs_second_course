@@ -6,8 +6,8 @@
 #include "environment.h"
 
 int main(int argc, char* argv[], char* envp[]) {
-	char **childEnv = NULL;    
-	int childEnvSize = 0;      
+	char **childEnv = NULL;
+	int childEnvSize = 0;
 
 	(void)argc;
 
@@ -38,9 +38,10 @@ int main(int argc, char* argv[], char* envp[]) {
 	}
 
 	qsort(childEnv, childEnvSize, sizeof(char*), compStrings);
-	printStrings(childEnv, childEnvSize);		
+	printStrings(childEnv, childEnvSize);
 
-	freeEnv(childEnv, childEnvSize);		
+	freeEnv(childEnv, childEnvSize);
+	sleep(5);
 
 	return 0;
 }

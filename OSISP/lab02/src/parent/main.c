@@ -5,13 +5,13 @@
 #include "environment.h"
 
 int main(int argc, char* argv[], char* envp[]) {
-	char **parentEnv = NULL;    
-	char **childEnv = NULL;     
-	int parentEnvSize = 0;      
-	int childEnvSize = 0;       
-	pid_t child;                
-	char option;                
-	unsigned childCount = 0;    
+	char **parentEnv = NULL;
+	char **childEnv = NULL;
+	int parentEnvSize = 0;
+	int childEnvSize = 0;
+	pid_t child;
+	char option;
+	unsigned childCount = 0;
 	const char *envFilePath;
 
 	(void)argc;
@@ -46,7 +46,7 @@ int main(int argc, char* argv[], char* envp[]) {
 		switch (option) {
 			case '+':
 			case '*':
-				child = fork();		
+				child = fork();
 				if(child < 0) {
 					fprintf(stderr, "Can't create child process. Program stopped.");
 					exit(7);
@@ -56,7 +56,6 @@ int main(int argc, char* argv[], char* envp[]) {
 						executeChild(option, childCount, childEnv);
 					}
 					else {
-						waitForChild(child);	
 						++childCount;
 					}
 				}

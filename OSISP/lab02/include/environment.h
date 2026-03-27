@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>     
-#include <sys/wait.h>   
+#include <unistd.h>
+#include <sys/wait.h>
 #include <locale.h>
 
-#define MAX_VAL_LEN 128 
-#define MAX_KEY_LEN 128 
+#define MAX_VAL_LEN 128
+#define MAX_KEY_LEN 128
 #define DEFAULT_ENV_FILE "env.txt"
 
-extern char **environ;  
+extern char **environ;
 
 void printStrings(char **env, int size);
 
