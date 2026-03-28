@@ -1,0 +1,1475 @@
+Файл barrier_compat.h
+
+#pragma once
+
+#include <pthread.h>
+
+#if defined(__APPLE__) && !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+typedef int pthread_barrierattr_t;
+
+#define PTHREAD_BARRIER_SERIAL_THREAD 1
+
+typedef struct
+{
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+    unsigned threshold;
+    unsigned count;
+    unsigned generation;
+} pthread_barrier_t;
+
+static inline int pthread_barrier_init(pthread_barrier_t* barrier,
+                                       const pthread_barrierattr_t* attr,
+                                       unsigned count)
+{
+    (void)attr;
+    if (count == 0)
+    {
+        return -1;
+    }
+
+    if (pthread_mutex_init(&barrier->mutex, NULL) != 0)
+    {
+        return -1;
+    }
+    if (pthread_cond_init(&barrier->condition, NULL) != 0)
+    {
+        pthread_mutex_destroy(&barrier->mutex);
+        return -1;
+    }
+
+    barrier->threshold = count;
+    barrier->count = 0;
+    barrier->generation = 0;
+    return 0;
+}
+
+static inline int pthread_barrier_destroy(pthread_barrier_t* barrier)
+{
+    int rc = pthread_cond_destroy(&barrier->condition);
+    int mutexRc = pthread_mutex_destroy(&barrier->mutex);
+
+    return (rc != 0) ? rc : mutexRc;
+}
+
+static inline int pthread_barrier_wait(pthread_barrier_t* barrier)
+{
+    unsigned generation;
+
+    pthread_mutex_lock(&barrier->mutex);
+    generation = barrier->generation;
+    ++barrier->count;
+
+    if (barrier->count == barrier->threshold)
+    {
+        barrier->count = 0;
+        ++barrier->generation;
+        pthread_cond_broadcast(&barrier->condition);
+        pthread_mutex_unlock(&barrier->mutex);
+        return PTHREAD_BARRIER_SERIAL_THREAD;
+    }
+
+    while (generation == barrier->generation)
+    {
+        pthread_cond_wait(&barrier->condition, &barrier->mutex);
+    }
+
+    pthread_mutex_unlock(&barrier->mutex);
+    return 0;
+}
+#endif
+
+
+Файл file.c
+
+#define _POSIX_C_SOURCE 200809L
+
+#include "file.h"
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int open_index_file(const char* filename, int* file_descriptor, uint64_t* records, size_t* data_bytes)
+{
+    struct stat file_info;
+    ssize_t bytes_read;
+    size_t expected_data_bytes;
+
+    *file_descriptor = open(filename, O_RDWR);
+    if (*file_descriptor == -1)
+    {
+        perror("open");
+        return -1;
+    }
+
+    if (fstat(*file_descriptor, &file_info) != 0)
+    {
+        perror("fstat");
+        close(*file_descriptor);
+        *file_descriptor = -1;
+        return -1;
+    }
+
+    if ((size_t)file_info.st_size < sizeof(uint64_t))
+    {
+        fprintf(stderr, "File \"%s\" is too small to contain an index header.\n", filename);
+        close(*file_descriptor);
+        *file_descriptor = -1;
+        return -1;
+    }
+
+    bytes_read = pread(*file_descriptor, records, sizeof(*records), 0);
+    if (bytes_read != (ssize_t)sizeof(*records))
+    {
+        perror("pread");
+        close(*file_descriptor);
+        *file_descriptor = -1;
+        return -1;
+    }
+
+    if (*records == 0 || *records > (SIZE_MAX / sizeof(IndexRecord)))
+    {
+        fprintf(stderr, "File \"%s\" contains an invalid record count.\n", filename);
+        close(*file_descriptor);
+        *file_descriptor = -1;
+        return -1;
+    }
+
+    expected_data_bytes = (size_t)(*records) * sizeof(IndexRecord);
+    if ((size_t)file_info.st_size != sizeof(uint64_t) + expected_data_bytes)
+    {
+        fprintf(stderr, "File \"%s\" size does not match the index header.\n", filename);
+        close(*file_descriptor);
+        *file_descriptor = -1;
+        return -1;
+    }
+
+    *data_bytes = expected_data_bytes;
+    return 0;
+}
+
+int map_index_chunk(int file_descriptor, size_t data_offset, size_t chunk_bytes, size_t page_size, MappedChunk* chunk)
+{
+    off_t file_offset = (off_t)(sizeof(uint64_t) + data_offset);
+    off_t map_offset = file_offset & ~((off_t)page_size - 1);
+    size_t prefix = (size_t)(file_offset - map_offset);
+    size_t map_length = prefix + chunk_bytes;
+    void* mapping;
+
+    memset(chunk, 0, sizeof(*chunk));
+    mapping = mmap(NULL, map_length, PROT_READ | PROT_WRITE, MAP_SHARED, file_descriptor, map_offset);
+    if (mapping == MAP_FAILED)
+    {
+        perror("mmap");
+        return -1;
+    }
+
+    chunk->mapping = mapping;
+    chunk->mapping_length = map_length;
+    chunk->records = (IndexRecord*)((char*)mapping + prefix);
+    chunk->record_count = chunk_bytes / sizeof(IndexRecord);
+    return 0;
+}
+
+int sync_and_unmap_chunk(MappedChunk* chunk)
+{
+    if (chunk->mapping == NULL)
+    {
+        return 0;
+    }
+
+    if (msync(chunk->mapping, chunk->mapping_length, MS_SYNC) != 0)
+    {
+        perror("msync");
+        return -1;
+    }
+    if (munmap(chunk->mapping, chunk->mapping_length) != 0)
+    {
+        perror("munmap");
+        return -1;
+    }
+
+    memset(chunk, 0, sizeof(*chunk));
+    return 0;
+}
+
+int write_run_file(const char* run_filename, const IndexRecord* records, size_t record_count)
+{
+    FILE* file = fopen(run_filename, "wb");
+
+    if (file == NULL)
+    {
+        perror("fopen");
+        return -1;
+    }
+
+    if (fwrite(records, sizeof(IndexRecord), record_count, file) != record_count)
+    {
+        perror("fwrite");
+        fclose(file);
+        return -1;
+    }
+
+    if (fclose(file) != 0)
+    {
+        perror("fclose");
+        return -1;
+    }
+
+    return 0;
+}
+
+void make_run_filename(char* buffer, size_t buffer_size, const char* filename, size_t run_index)
+{
+    snprintf(buffer, buffer_size, "%s.run.%zu", filename, run_index);
+}
+
+
+Файл file.h
+
+#pragma once
+
+#include "index.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+typedef struct
+{
+    void* mapping;
+    size_t mapping_length;
+    IndexRecord* records;
+    size_t record_count;
+} MappedChunk;
+
+int open_index_file(const char* filename, int* file_descriptor, uint64_t* records, size_t* data_bytes);
+int map_index_chunk(int file_descriptor, size_t data_offset, size_t chunk_bytes, size_t page_size, MappedChunk* chunk);
+int sync_and_unmap_chunk(MappedChunk* chunk);
+int write_run_file(const char* run_filename, const IndexRecord* records, size_t record_count);
+void make_run_filename(char* buffer, size_t buffer_size, const char* filename, size_t run_index);
+
+
+Файл gen.c
+
+#define _POSIX_C_SOURCE 200809L
+
+#include "index.h"
+
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+static void print_usage(const char* program_name)
+{
+    fprintf(stderr, "Usage: %s filename records\n", program_name);
+    fprintf(stderr, "records must be a positive number divisible by 256.\n");
+}
+
+int main(int argc, char* argv[])
+{
+    char* end = NULL;
+    uint64_t records;
+    unsigned int seed;
+    FILE* file;
+
+    if (argc != 3)
+    {
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    records = strtoull(argv[2], &end, 10);
+    if (argv[2][0] == '\0' || end == NULL || *end != '\0' || records == 0 || (records % 256U) != 0)
+    {
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    file = fopen(argv[1], "wb");
+    if (file == NULL)
+    {
+        perror("fopen");
+        return EXIT_FAILURE;
+    }
+
+    if (fwrite(&records, sizeof(records), 1, file) != 1)
+    {
+        perror("fwrite");
+        fclose(file);
+        return EXIT_FAILURE;
+    }
+
+    seed = (unsigned int)time(NULL) ^ (unsigned int)getpid();
+    for (uint64_t index = 0; index < records; ++index)
+    {
+        IndexRecord record;
+
+        record.time_mark = generate_random_time_mark(&seed);
+        record.recno = index + 1U;
+        if (fwrite(&record, sizeof(record), 1, file) != 1)
+        {
+            perror("fwrite");
+            fclose(file);
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (fclose(file) != 0)
+    {
+        perror("fclose");
+        return EXIT_FAILURE;
+    }
+
+    printf("Generated \"%s\" with %" PRIu64 " records.\n", argv[1], records);
+    return EXIT_SUCCESS;
+}
+
+
+Файл heap.c
+
+#include "heap.h"
+
+#include <stdlib.h>
+
+static void heapify_down(MinHeap* heap, size_t index)
+{
+    while (1)
+    {
+        size_t left = index * 2U + 1U;
+        size_t right = index * 2U + 2U;
+        size_t smallest = index;
+
+        if (left < heap->size &&
+            compare_index_records(&heap->nodes[left].value, &heap->nodes[smallest].value) < 0)
+        {
+            smallest = left;
+        }
+        if (right < heap->size &&
+            compare_index_records(&heap->nodes[right].value, &heap->nodes[smallest].value) < 0)
+        {
+            smallest = right;
+        }
+        if (smallest == index)
+        {
+            break;
+        }
+
+        {
+            MinHeapNode temp = heap->nodes[index];
+            heap->nodes[index] = heap->nodes[smallest];
+            heap->nodes[smallest] = temp;
+        }
+        index = smallest;
+    }
+}
+
+static void heapify_up(MinHeap* heap, size_t index)
+{
+    while (index > 0)
+    {
+        size_t parent = (index - 1U) / 2U;
+
+        if (compare_index_records(&heap->nodes[index].value, &heap->nodes[parent].value) >= 0)
+        {
+            break;
+        }
+
+        {
+            MinHeapNode temp = heap->nodes[index];
+            heap->nodes[index] = heap->nodes[parent];
+            heap->nodes[parent] = temp;
+        }
+        index = parent;
+    }
+}
+
+MinHeap* create_heap(size_t run_count, FILE* runs[])
+{
+    MinHeap* heap = (MinHeap*)calloc(1, sizeof(MinHeap));
+
+    if (heap == NULL)
+    {
+        return NULL;
+    }
+
+    heap->nodes = (MinHeapNode*)calloc(run_count, sizeof(MinHeapNode));
+    if (heap->nodes == NULL)
+    {
+        free(heap);
+        return NULL;
+    }
+
+    heap->capacity = run_count;
+    for (size_t index = 0; index < run_count; ++index)
+    {
+        IndexRecord record;
+
+        if (fread(&record, sizeof(record), 1, runs[index]) == 1)
+        {
+            heap->nodes[heap->size].value = record;
+            heap->nodes[heap->size].run_index = index;
+            ++heap->size;
+        }
+    }
+
+    if (heap->size > 0)
+    {
+        for (size_t index = heap->size / 2U; index > 0; --index)
+        {
+            heapify_down(heap, index - 1U);
+        }
+    }
+
+    return heap;
+}
+
+MinHeapNode extract_min_node(MinHeap* heap)
+{
+    MinHeapNode node = heap->nodes[0];
+
+    heap->nodes[0] = heap->nodes[heap->size - 1U];
+    --heap->size;
+    if (heap->size > 0)
+    {
+        heapify_down(heap, 0);
+    }
+
+    return node;
+}
+
+void insert_node(MinHeap* heap, MinHeapNode node)
+{
+    heap->nodes[heap->size] = node;
+    heapify_up(heap, heap->size);
+    ++heap->size;
+}
+
+void destroy_heap(MinHeap* heap)
+{
+    if (heap == NULL)
+    {
+        return;
+    }
+
+    free(heap->nodes);
+    free(heap);
+}
+
+
+Файл heap.h
+
+#pragma once
+
+#include "index.h"
+
+#include <stddef.h>
+#include <stdio.h>
+
+typedef struct
+{
+    IndexRecord value;
+    size_t run_index;
+} MinHeapNode;
+
+typedef struct
+{
+    MinHeapNode* nodes;
+    size_t size;
+    size_t capacity;
+} MinHeap;
+
+MinHeap* create_heap(size_t run_count, FILE* runs[]);
+MinHeapNode extract_min_node(MinHeap* heap);
+void insert_node(MinHeap* heap, MinHeapNode node);
+void destroy_heap(MinHeap* heap);
+
+
+Файл index.c
+
+#define _POSIX_C_SOURCE 200809L
+
+#include "index.h"
+
+#include <stdlib.h>
+#include <time.h>
+
+enum
+{
+    FIRST_VALID_MJD = 15020,
+    UNIX_EPOCH_MJD = 40587
+};
+
+static uint64_t get_yesterday_mjd(void)
+{
+    time_t now = time(NULL);
+    uint64_t today = (uint64_t)(now / 86400) + UNIX_EPOCH_MJD;
+
+    if (today == 0)
+    {
+        return FIRST_VALID_MJD;
+    }
+
+    return today - 1U;
+}
+
+double generate_random_time_mark(unsigned int* seed)
+{
+    uint64_t yesterday = get_yesterday_mjd();
+    uint64_t span = yesterday - FIRST_VALID_MJD + 1U;
+    uint64_t whole = FIRST_VALID_MJD + (uint64_t)(rand_r(seed) % span);
+    double fraction = (double)rand_r(seed) / ((double)RAND_MAX + 1.0);
+
+    return (double)whole + fraction;
+}
+
+int compare_index_records(const void* left, const void* right)
+{
+    const IndexRecord* lhs = (const IndexRecord*)left;
+    const IndexRecord* rhs = (const IndexRecord*)right;
+
+    if (lhs->time_mark < rhs->time_mark)
+    {
+        return -1;
+    }
+    if (lhs->time_mark > rhs->time_mark)
+    {
+        return 1;
+    }
+    if (lhs->recno < rhs->recno)
+    {
+        return -1;
+    }
+    if (lhs->recno > rhs->recno)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+
+Файл index.h
+
+#pragma once
+
+#include <stdint.h>
+
+typedef struct
+{
+    double time_mark;
+    uint64_t recno;
+} IndexRecord;
+
+typedef struct
+{
+    uint64_t records;
+    IndexRecord idx[];
+} IndexHeader;
+
+double generate_random_time_mark(unsigned int* seed);
+int compare_index_records(const void* left, const void* right);
+
+
+Файл program.c
+
+#include "program.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define MAX_INT_DIGIT 10
+
+static void clearInputBuffer(void)
+{
+	int ch;
+
+	while((ch = getchar()) != '\n' && ch != EOF) {}
+}
+
+void executeProg(char option, char* fileName, int memSize)
+{
+	int indexSize;
+	char indexSizeStr[MAX_INT_DIGIT + 1];
+	char* argv[] = {"prog", fileName, indexSizeStr, NULL};
+
+	if(option == '1')
+	{
+		printf("\nВведите размер индексного файла в байтах.\n");
+		printf("Требования: число больше %d, кратно 256 и %d.\n", memSize, memSize);
+		printf("Размер файла: ");
+		fflush(stdout);
+		while(scanf("%d", &indexSize) != 1 || indexSize <= memSize || indexSize % memSize != 0)
+		{
+			printf("\nНекорректный ввод.\n");
+			printf("Размер файла должен быть целым положительным числом,");
+			printf(" больше %d и кратным %d.\n", memSize, memSize);
+			printf("Повторите ввод: ");
+			fflush(stdout);
+			clearInputBuffer();
+		}
+		clearInputBuffer();
+
+		snprintf(indexSizeStr, sizeof(indexSizeStr), "%d", indexSize);
+	}
+	else
+	{
+		argv[2] = NULL;
+	}
+
+	if(execve(option == '1' ? "./gen" : "./view", argv, NULL) == -1)
+	{
+		perror("Не удалось запустить дочернюю программу");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void waitForProg(pid_t prog)
+{
+	if((waitpid(prog, NULL, 0)) == -1)
+	{
+		perror("Не удалось дождаться завершения дочернего процесса");
+		exit(6);
+	}
+}
+
+
+Файл program.h
+
+#include <sys/types.h>
+
+void executeProg(char option, char* fileName, int memSize);
+void waitForProg(pid_t prog);
+
+
+Файл sort.c
+
+#define _POSIX_C_SOURCE 200809L
+
+#include "sort.h"
+
+#include "barrier_compat.h"
+#include "file.h"
+#include "heap.h"
+#include "index.h"
+
+#include <pthread.h>
+#include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+typedef struct SortContext SortContext;
+
+typedef struct
+{
+    SortContext* context;
+    size_t thread_id;
+} WorkerInfo;
+
+struct SortContext
+{
+    pthread_barrier_t barrier;
+    pthread_mutex_t mutex;
+    atomic_bool shutdown;
+    int barrier_initialized;
+    int mutex_initialized;
+    size_t thread_count;
+    size_t block_count;
+    size_t mem_size;
+    size_t block_bytes;
+    size_t records_per_block;
+    size_t records_per_chunk;
+    IndexRecord* current_records;
+    int* sort_map;
+    int* merge_map;
+};
+
+static int init_context(SortContext* context, size_t mem_size, size_t block_count, size_t thread_count)
+{
+    memset(context, 0, sizeof(*context));
+    atomic_init(&context->shutdown, 0);
+
+    context->thread_count = thread_count;
+    context->block_count = block_count;
+    context->mem_size = mem_size;
+    context->block_bytes = mem_size / block_count;
+    context->records_per_block = context->block_bytes / sizeof(IndexRecord);
+    context->records_per_chunk = mem_size / sizeof(IndexRecord);
+    context->sort_map = (int*)calloc(block_count, sizeof(int));
+    context->merge_map = (int*)calloc(block_count / 2U, sizeof(int));
+    if (context->sort_map == NULL || context->merge_map == NULL)
+    {
+        fprintf(stderr, "Failed to allocate synchronization maps.\n");
+        return -1;
+    }
+
+    if (pthread_barrier_init(&context->barrier, NULL, (unsigned)thread_count) != 0)
+    {
+        fprintf(stderr, "Failed to initialize barrier.\n");
+        return -1;
+    }
+    context->barrier_initialized = 1;
+    if (pthread_mutex_init(&context->mutex, NULL) != 0)
+    {
+        fprintf(stderr, "Failed to initialize mutex.\n");
+        return -1;
+    }
+    context->mutex_initialized = 1;
+
+    return 0;
+}
+
+static void destroy_context(SortContext* context)
+{
+    if (context->mutex_initialized)
+    {
+        pthread_mutex_destroy(&context->mutex);
+    }
+    if (context->barrier_initialized)
+    {
+        pthread_barrier_destroy(&context->barrier);
+    }
+    free(context->sort_map);
+    free(context->merge_map);
+}
+
+static void prepare_chunk(SortContext* context, IndexRecord* records)
+{
+    context->current_records = records;
+    memset(context->sort_map, 0, context->block_count * sizeof(int));
+    for (size_t index = 0; index < context->thread_count; ++index)
+    {
+        context->sort_map[index] = 1;
+    }
+}
+
+static int claim_next_sort_block(SortContext* context, size_t* block_index)
+{
+    int found = 0;
+
+    pthread_mutex_lock(&context->mutex);
+    for (size_t index = 0; index < context->block_count; ++index)
+    {
+        if (context->sort_map[index] == 0)
+        {
+            context->sort_map[index] = 1;
+            *block_index = index;
+            found = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&context->mutex);
+
+    return found;
+}
+
+static void sort_phase(SortContext* context, size_t thread_id)
+{
+    size_t block_index = thread_id;
+
+    qsort(context->current_records + block_index * context->records_per_block,
+          context->records_per_block,
+          sizeof(IndexRecord),
+          compare_index_records);
+
+    while (claim_next_sort_block(context, &block_index))
+    {
+        qsort(context->current_records + block_index * context->records_per_block,
+              context->records_per_block,
+              sizeof(IndexRecord),
+              compare_index_records);
+    }
+
+    pthread_barrier_wait(&context->barrier);
+}
+
+static void merge_pair(SortContext* context, size_t pair_index, size_t run_blocks)
+{
+    size_t left_block = pair_index * run_blocks * 2U;
+    size_t run_records = run_blocks * context->records_per_block;
+    size_t total_records = run_records * 2U;
+    IndexRecord* left = context->current_records + left_block * context->records_per_block;
+    IndexRecord* right = left + run_records;
+    IndexRecord* temp = (IndexRecord*)malloc(total_records * sizeof(IndexRecord));
+    size_t left_index = 0;
+    size_t right_index = 0;
+    size_t out_index = 0;
+
+    if (temp == NULL)
+    {
+        fprintf(stderr, "Failed to allocate merge buffer.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (left_index < run_records && right_index < run_records)
+    {
+        if (compare_index_records(&left[left_index], &right[right_index]) <= 0)
+        {
+            temp[out_index++] = left[left_index++];
+        }
+        else
+        {
+            temp[out_index++] = right[right_index++];
+        }
+    }
+    while (left_index < run_records)
+    {
+        temp[out_index++] = left[left_index++];
+    }
+    while (right_index < run_records)
+    {
+        temp[out_index++] = right[right_index++];
+    }
+
+    memcpy(left, temp, total_records * sizeof(IndexRecord));
+    free(temp);
+}
+
+static int claim_next_merge_pair(SortContext* context, size_t pair_count, size_t* pair_index)
+{
+    int found = 0;
+
+    pthread_mutex_lock(&context->mutex);
+    for (size_t index = 0; index < pair_count; ++index)
+    {
+        if (context->merge_map[index] == 0)
+        {
+            context->merge_map[index] = 1;
+            *pair_index = index;
+            found = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&context->mutex);
+
+    return found;
+}
+
+static void merge_phase(SortContext* context, size_t thread_id)
+{
+    for (size_t run_blocks = 1; run_blocks < context->block_count; run_blocks <<= 1U)
+    {
+        size_t pair_count = context->block_count / (run_blocks * 2U);
+
+        if (pair_count == 1)
+        {
+            if (thread_id == 0)
+            {
+                merge_pair(context, 0, run_blocks);
+            }
+            pthread_barrier_wait(&context->barrier);
+            continue;
+        }
+
+        if (pair_count >= context->thread_count)
+        {
+            for (size_t pair_index = thread_id; pair_index < pair_count; pair_index += context->thread_count)
+            {
+                merge_pair(context, pair_index, run_blocks);
+            }
+            pthread_barrier_wait(&context->barrier);
+            continue;
+        }
+
+        if (thread_id == 0)
+        {
+            memset(context->merge_map, 0, pair_count * sizeof(int));
+        }
+        pthread_barrier_wait(&context->barrier);
+
+        {
+            size_t pair_index;
+            while (claim_next_merge_pair(context, pair_count, &pair_index))
+            {
+                merge_pair(context, pair_index, run_blocks);
+            }
+        }
+
+        pthread_barrier_wait(&context->barrier);
+    }
+}
+
+static void process_current_chunk(SortContext* context, size_t thread_id)
+{
+    sort_phase(context, thread_id);
+    merge_phase(context, thread_id);
+}
+
+static void* worker_main(void* arg)
+{
+    WorkerInfo* info = (WorkerInfo*)arg;
+    SortContext* context = info->context;
+
+    while (1)
+    {
+        pthread_barrier_wait(&context->barrier);
+        if (atomic_load(&context->shutdown))
+        {
+            break;
+        }
+        process_current_chunk(context, info->thread_id);
+    }
+
+    return NULL;
+}
+
+static void cleanup_run_files(const char* filename, size_t run_count)
+{
+    size_t name_length = strlen(filename) + 32U;
+    char* run_name = (char*)malloc(name_length);
+
+    if (run_name == NULL)
+    {
+        return;
+    }
+
+    for (size_t index = 0; index < run_count; ++index)
+    {
+        make_run_filename(run_name, name_length, filename, index);
+        remove(run_name);
+    }
+
+    free(run_name);
+}
+
+static int merge_run_files(const char* filename, uint64_t records, size_t run_count)
+{
+    FILE** runs = NULL;
+    FILE* output = NULL;
+    MinHeap* heap = NULL;
+    char* run_name = NULL;
+    char* temp_name = NULL;
+    int result = -1;
+
+    runs = (FILE**)calloc(run_count, sizeof(FILE*));
+    if (runs == NULL)
+    {
+        fprintf(stderr, "Failed to allocate run handles.\n");
+        goto cleanup;
+    }
+
+    run_name = (char*)malloc(strlen(filename) + 32U);
+    temp_name = (char*)malloc(strlen(filename) + 32U);
+    if (run_name == NULL || temp_name == NULL)
+    {
+        fprintf(stderr, "Failed to allocate temporary file names.\n");
+        goto cleanup;
+    }
+
+    for (size_t index = 0; index < run_count; ++index)
+    {
+        make_run_filename(run_name, strlen(filename) + 32U, filename, index);
+        runs[index] = fopen(run_name, "rb");
+        if (runs[index] == NULL)
+        {
+            perror("fopen");
+            goto cleanup;
+        }
+    }
+
+    snprintf(temp_name, strlen(filename) + 32U, "%s.sorted.tmp", filename);
+    output = fopen(temp_name, "wb");
+    if (output == NULL)
+    {
+        perror("fopen");
+        goto cleanup;
+    }
+
+    if (fwrite(&records, sizeof(records), 1, output) != 1)
+    {
+        perror("fwrite");
+        goto cleanup;
+    }
+
+    heap = create_heap(run_count, runs);
+    if (heap == NULL)
+    {
+        fprintf(stderr, "Failed to create merge heap.\n");
+        goto cleanup;
+    }
+
+    while (heap->size > 0)
+    {
+        MinHeapNode node = extract_min_node(heap);
+
+        if (fwrite(&node.value, sizeof(IndexRecord), 1, output) != 1)
+        {
+            perror("fwrite");
+            goto cleanup;
+        }
+
+        if (fread(&node.value, sizeof(IndexRecord), 1, runs[node.run_index]) == 1)
+        {
+            insert_node(heap, node);
+        }
+    }
+
+    if (fclose(output) != 0)
+    {
+        perror("fclose");
+        output = NULL;
+        goto cleanup;
+    }
+    output = NULL;
+
+    for (size_t index = 0; index < run_count; ++index)
+    {
+        fclose(runs[index]);
+        runs[index] = NULL;
+    }
+
+    cleanup_run_files(filename, run_count);
+    if (rename(temp_name, filename) != 0)
+    {
+        perror("rename");
+        goto cleanup;
+    }
+
+    result = 0;
+
+cleanup:
+    if (output != NULL)
+    {
+        fclose(output);
+        remove(temp_name);
+    }
+    if (runs != NULL)
+    {
+        for (size_t index = 0; index < run_count; ++index)
+        {
+            if (runs[index] != NULL)
+            {
+                fclose(runs[index]);
+            }
+        }
+    }
+    destroy_heap(heap);
+    free(runs);
+    free(run_name);
+    free(temp_name);
+
+    return result;
+}
+
+int sort_index_file(size_t mem_size, size_t block_count, size_t thread_count, const char* filename)
+{
+    SortContext context;
+    WorkerInfo* workers = NULL;
+    pthread_t* handles = NULL;
+    size_t created_threads = 0;
+    int file_descriptor = -1;
+    uint64_t records = 0;
+    size_t data_bytes = 0;
+    size_t run_count;
+    long page_size_value = sysconf(_SC_PAGESIZE);
+    size_t page_size = (page_size_value > 0) ? (size_t)page_size_value : 4096U;
+    int result = -1;
+
+    if (open_index_file(filename, &file_descriptor, &records, &data_bytes) != 0)
+    {
+        return -1;
+    }
+
+    if (data_bytes < mem_size || (data_bytes % mem_size) != 0)
+    {
+        fprintf(stderr, "Index data size must be a multiple of memsize and at least one full chunk.\n");
+        close(file_descriptor);
+        return -1;
+    }
+
+    if ((mem_size % block_count) != 0 || ((mem_size / block_count) % sizeof(IndexRecord)) != 0)
+    {
+        fprintf(stderr, "memsize/blocks must be a multiple of sizeof(IndexRecord).\n");
+        close(file_descriptor);
+        return -1;
+    }
+
+    if (init_context(&context, mem_size, block_count, thread_count) != 0)
+    {
+        close(file_descriptor);
+        return -1;
+    }
+
+    workers = (WorkerInfo*)calloc(thread_count, sizeof(WorkerInfo));
+    handles = (pthread_t*)calloc(thread_count, sizeof(pthread_t));
+    if (workers == NULL || handles == NULL)
+    {
+        fprintf(stderr, "Failed to allocate thread metadata.\n");
+        goto cleanup;
+    }
+
+    for (size_t index = 0; index < thread_count; ++index)
+    {
+        workers[index].context = &context;
+        workers[index].thread_id = index;
+    }
+
+    for (size_t index = 1; index < thread_count; ++index)
+    {
+        int error = pthread_create(&handles[index], NULL, worker_main, &workers[index]);
+
+        if (error != 0)
+        {
+            fprintf(stderr, "Failed to create worker thread.\n");
+            goto cleanup;
+        }
+        ++created_threads;
+    }
+
+    run_count = data_bytes / mem_size;
+    for (size_t run_index = 0; run_index < run_count; ++run_index)
+    {
+        MappedChunk chunk;
+        char* run_name = (char*)malloc(strlen(filename) + 32U);
+
+        if (run_name == NULL)
+        {
+            fprintf(stderr, "Failed to allocate run file name.\n");
+            goto cleanup;
+        }
+
+        if (map_index_chunk(file_descriptor, run_index * mem_size, mem_size, page_size, &chunk) != 0)
+        {
+            free(run_name);
+            goto cleanup;
+        }
+
+        prepare_chunk(&context, chunk.records);
+        pthread_barrier_wait(&context.barrier);
+        process_current_chunk(&context, 0);
+
+        make_run_filename(run_name, strlen(filename) + 32U, filename, run_index);
+        if (write_run_file(run_name, chunk.records, chunk.record_count) != 0)
+        {
+            free(run_name);
+            sync_and_unmap_chunk(&chunk);
+            goto cleanup;
+        }
+        free(run_name);
+
+        if (sync_and_unmap_chunk(&chunk) != 0)
+        {
+            goto cleanup;
+        }
+    }
+
+    atomic_store(&context.shutdown, 1);
+    pthread_barrier_wait(&context.barrier);
+    for (size_t index = 1; index <= created_threads; ++index)
+    {
+        pthread_join(handles[index], NULL);
+    }
+
+    close(file_descriptor);
+    file_descriptor = -1;
+    if (merge_run_files(filename, records, run_count) != 0)
+    {
+        goto cleanup_after_threads;
+    }
+
+    result = 0;
+
+cleanup_after_threads:
+    cleanup_run_files(filename, run_count);
+    created_threads = 0;
+
+cleanup:
+    if (result != 0 && created_threads > 0)
+    {
+        atomic_store(&context.shutdown, 1);
+        pthread_barrier_wait(&context.barrier);
+        for (size_t index = 1; index <= created_threads; ++index)
+        {
+            pthread_join(handles[index], NULL);
+        }
+    }
+    if (file_descriptor != -1)
+    {
+        close(file_descriptor);
+    }
+    destroy_context(&context);
+    free(handles);
+    free(workers);
+
+    return result;
+}
+
+
+Файл sort.h
+
+#pragma once
+
+#include <stddef.h>
+
+int sort_index_file(size_t mem_size, size_t block_count, size_t thread_count, const char* filename);
+
+
+Файл sort_index.c
+
+#define _DARWIN_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
+#include "index.h"
+#include "sort.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#endif
+
+enum
+{
+    MAX_THREADS_PER_CORE = 8
+};
+
+static int is_power_of_two(size_t value)
+{
+    return value != 0 && (value & (value - 1U)) == 0;
+}
+
+static size_t get_cpu_cores(void)
+{
+#if defined(__APPLE__)
+    int cores = 1;
+    size_t size = sizeof(cores);
+
+    if (sysctlbyname("hw.logicalcpu", &cores, &size, NULL, 0) != 0 || cores <= 0)
+    {
+        return 1;
+    }
+    return (size_t)cores;
+#else
+    long cores = sysconf(_SC_NPROCESSORS_ONLN);
+
+    if (cores <= 0)
+    {
+        return 1;
+    }
+    return (size_t)cores;
+#endif
+}
+
+static size_t get_page_size_value(void)
+{
+    long page_size = sysconf(_SC_PAGESIZE);
+
+    if (page_size <= 0)
+    {
+        return 4096U;
+    }
+    return (size_t)page_size;
+}
+
+static void print_usage(const char* program_name, size_t page_size, size_t min_threads, size_t max_threads)
+{
+    fprintf(stderr, "Usage: %s memsize blocks threads filename\n", program_name);
+    fprintf(stderr, "memsize must be positive and divisible by page size (%zu).\n", page_size);
+    fprintf(stderr, "blocks must be a power of two and at least 4 * threads.\n");
+    fprintf(stderr, "threads must be in range [%zu, %zu].\n", min_threads, max_threads);
+}
+
+int main(int argc, char* argv[])
+{
+    char* end = NULL;
+    size_t mem_size;
+    size_t blocks;
+    size_t threads;
+    size_t min_threads = get_cpu_cores();
+    size_t max_threads = min_threads * MAX_THREADS_PER_CORE;
+    size_t page_size = get_page_size_value();
+
+    if (argc != 5)
+    {
+        print_usage(argv[0], page_size, min_threads, max_threads);
+        return EXIT_FAILURE;
+    }
+
+    mem_size = strtoull(argv[1], &end, 10);
+    if (argv[1][0] == '\0' || end == NULL || *end != '\0' || mem_size == 0 || (mem_size % page_size) != 0)
+    {
+        print_usage(argv[0], page_size, min_threads, max_threads);
+        return EXIT_FAILURE;
+    }
+
+    blocks = strtoull(argv[2], &end, 10);
+    if (argv[2][0] == '\0' || end == NULL || *end != '\0' || !is_power_of_two(blocks))
+    {
+        print_usage(argv[0], page_size, min_threads, max_threads);
+        return EXIT_FAILURE;
+    }
+
+    threads = strtoull(argv[3], &end, 10);
+    if (argv[3][0] == '\0' || end == NULL || *end != '\0' || threads < min_threads || threads > max_threads)
+    {
+        print_usage(argv[0], page_size, min_threads, max_threads);
+        return EXIT_FAILURE;
+    }
+
+    if (blocks < threads * 4U)
+    {
+        print_usage(argv[0], page_size, min_threads, max_threads);
+        return EXIT_FAILURE;
+    }
+    if ((mem_size % blocks) != 0 || ((mem_size / blocks) % sizeof(IndexRecord)) != 0)
+    {
+        fprintf(stderr, "memsize/blocks must contain a whole number of records.\n");
+        return EXIT_FAILURE;
+    }
+
+    if (sort_index_file(mem_size, blocks, threads, argv[4]) != 0)
+    {
+        return EXIT_FAILURE;
+    }
+
+    printf("Sorted \"%s\" successfully.\n", argv[4]);
+    return EXIT_SUCCESS;
+}
+
+
+Файл thread.c
+
+#include "thread.h"
+#include "thread.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+ThreadInfo* initThreadInfo(int threadCount, int blockSize, int blocksCount, int indexesInBlock)
+{
+	ThreadInfo* info = (ThreadInfo*)calloc(threadCount, sizeof(ThreadInfo));
+	if(info == NULL)
+	{
+		perror("Не удалось выделить память");
+		exit(EXIT_FAILURE);
+	}
+
+	for(int i = 0; i < threadCount; ++i)
+	{
+		info[i].blockSize = blockSize;
+		info[i].blocksCount = blocksCount;
+		info[i].indexesInBlock = indexesInBlock;
+		info[i].id = i;
+	}
+
+	return info;
+}
+
+pthread_t* initThreads(int threadCount)
+{
+	pthread_t* threads = (pthread_t*)malloc(threadCount * sizeof(pthread_t));
+	if(threads == NULL)
+	{
+		perror("Не удалось выделить память");
+		exit(EXIT_FAILURE);
+	}
+
+	return threads;
+}
+
+void joinThreads(pthread_t* threads, int threadCount)
+{
+	for(int i = 1; i < threadCount; ++ i)
+	{
+		int error = pthread_join(threads[i], NULL);
+		if(error != 0)
+		{
+			fprintf(stderr, "Не удалось дождаться завершения потока: %s\n", strerror(error));
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+
+Файл thread.h
+
+#pragma once
+#include "index.h"
+#include <pthread.h>
+
+typedef struct
+{
+	Index* address;
+	int blockSize;
+	int blocksCount;
+	int indexesInBlock;
+	int id;
+} ThreadInfo;
+
+ThreadInfo* initThreadInfo(int threadCount, int blockSize, int blockCount, int indexesInBlock);
+pthread_t* initThreads(int threadCount);
+
+void joinThreads(pthread_t* threads, int threadCount);
+
+
+Файл view.c
+
+#include "index.h"
+
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+static void print_usage(const char* program_name)
+{
+    fprintf(stderr, "Usage: %s filename\n", program_name);
+}
+
+int main(int argc, char* argv[])
+{
+    FILE* file;
+    uint64_t records;
+
+    if (argc != 2)
+    {
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    file = fopen(argv[1], "rb");
+    if (file == NULL)
+    {
+        perror("fopen");
+        return EXIT_FAILURE;
+    }
+
+    if (fread(&records, sizeof(records), 1, file) != 1)
+    {
+        fprintf(stderr, "Failed to read index header from \"%s\".\n", argv[1]);
+        fclose(file);
+        return EXIT_FAILURE;
+    }
+
+    printf("records: %" PRIu64 "\n", records);
+    printf("%-18s %-12s\n", "time_mark", "recno");
+
+    for (uint64_t index = 0; index < records; ++index)
+    {
+        IndexRecord record;
+
+        if (fread(&record, sizeof(record), 1, file) != 1)
+        {
+            fprintf(stderr, "Unexpected end of file while reading \"%s\".\n", argv[1]);
+            fclose(file);
+            return EXIT_FAILURE;
+        }
+        printf("%-18.8f %-12" PRIu64 "\n", record.time_mark, record.recno);
+    }
+
+    fclose(file);
+    return EXIT_SUCCESS;
+}
+
+

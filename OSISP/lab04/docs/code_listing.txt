@@ -1,0 +1,853 @@
+Файл app.c
+
+#define _XOPEN_SOURCE 500
+
+#include "semaphores.h"
+#include "producer.h"
+#include "consumer.h"
+#include <errno.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+MessageQueue* queue = NULL;
+static volatile sig_atomic_t stopRequested = 0;
+
+void printStatus(Stack producers, Stack consumers);
+void printMenu(Stack producers, Stack consumers);
+void handleAppSignal(int sig);
+void installAppSignals(void);
+
+int main(void)
+{
+	Stack producers = initStack();
+	Stack consumers = initStack();
+	int semId = -1;
+	char option = '\0';
+	char input[32];
+	setvbuf(stdout, NULL, _IONBF, 0);
+	installAppSignals();
+	initSemaphores(&semId);
+
+    while (!stopRequested)
+    {
+		printMenu(producers, consumers);
+		if (fgets(input, sizeof(input), stdin) == NULL)
+		{
+			if (ferror(stdin) && errno == EINTR)
+			{
+				clearerr(stdin);
+				continue;
+			}
+			option = 'q';
+		}
+		else
+		{
+			option = input[0];
+		}
+
+		switch (option)
+		{
+			case '1':
+			case 'p':
+			case 'P':
+				createProducer(&producers, &semId);
+				break;
+			case '2':
+			case 'o':
+			case 'O':
+				if (producers.size > 0)
+				{
+					deleteProducer(&producers);
+				}
+				else
+				{
+					printf("No producers to remove\n");
+				}
+				break;
+			case '3':
+			case 'c':
+			case 'C':
+				createConsumer(&consumers, &semId);
+				break;
+			case '4':
+			case 'x':
+			case 'X':
+				if (consumers.size > 0)
+				{
+					deleteConsumer(&consumers);
+				}
+				else
+				{
+					printf("No consumers to remove\n");
+				}
+				break;
+			case '5':
+			case 's':
+			case 'S':
+			case 'l':
+			case 'L':
+				printStatus(producers, consumers);
+				break;
+			case '0':
+			case 'q':
+			case 'Q':
+				stopRequested = 1;
+				break;
+			case '\n':
+			case '\0':
+				break;
+			default:
+				printf("Invalid option\n");
+				break;
+		}
+
+    }
+
+    deleteSemaphores(&producers, &consumers, &semId);
+    return 0;
+}
+
+void handleAppSignal(int sig)
+{
+	(void)sig;
+	stopRequested = 1;
+}
+
+void installAppSignals(void)
+{
+	struct sigaction action;
+
+	action.sa_handler = handleAppSignal;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+}
+
+void printMenu(Stack producers, Stack consumers)
+{
+	printf("\n&&= Producer/Consumer Menu =&&\n");
+	printf("Status: producers=%d, consumers=%d, queue=%d/%d, free=%d\n",
+		producers.size,
+		consumers.size,
+		queue->messageCount,
+		MAX_MESSAGES,
+		queue->freeCount);
+	printf("1 / p. Add producer\n");
+	printf("2 / o. Remove producer\n");
+	printf("3 / c. Add consumer\n");
+	printf("4 / x. Remove consumer\n");
+	printf("5 / s. Show runtime stats\n");
+	printf("0 / q. Exit\n");
+	printf("Choice: ");
+}
+
+void printStatus(Stack producers, Stack consumers)
+{
+	printf("\nRuntime stats:\n");
+	printf("Producers: %d\n", producers.size);
+	printf("Consumers: %d\n", consumers.size);
+	printf("Queue capacity: %d\n", MAX_MESSAGES);
+	printf("Queue used: %d\n", queue->messageCount);
+	printf("Queue free: %d\n", queue->freeCount);
+	printf("Created messages: %d\n", queue->addedCount);
+	printf("Received messages: %d\n\n", queue->extractedCount);
+}
+
+
+Файл consumer.c
+
+#define _XOPEN_SOURCE 500
+
+#include "consumer.h"
+#include <signal.h>
+#include <errno.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+extern MessageQueue* queue;
+static volatile sig_atomic_t stopConsumer = 0;
+
+static void consumerSignalHandler(int signo)
+{
+    (void)signo;
+    stopConsumer = 1;
+}
+
+static void initConsumerSignals(void)
+{
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = consumerSignalHandler;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
+}
+
+void createConsumer(Stack* consumers, int* semId)
+{
+	fflush(stdout);
+	pid_t consumer = fork();
+    switch (consumer)
+    {
+        case 0:
+            break;
+        case -1:
+            perror("fork");
+            exit(errno);
+        default:
+            push(consumers, consumer);
+            printf("Consumer (PID=%d) created successfully. Current consumers count: %d\n", consumer, consumers->size);
+            return;
+    }
+
+    Message msg;
+    int extractedCount;
+    initConsumerSignals();
+    while (!stopConsumer)
+    {
+        if (semTryDown(semId, QUEUED_ITEMS_SEM) != 0)
+        {
+            usleep(100000);
+            continue;
+        }
+        if (semTryDown(semId, MUTEX_SEM) != 0)
+        {
+            semUp(semId, QUEUED_ITEMS_SEM);
+            usleep(100000);
+            continue;
+        }
+        extractedCount = getMessage(&msg);
+        semUp(semId, MUTEX_SEM);
+        if (extractedCount >= 0)
+        {
+            semUp(semId, FREE_SLOTS_SEM);
+        }
+        else
+        {
+            semUp(semId, QUEUED_ITEMS_SEM);
+        }
+        if (extractedCount >= 0)
+        {
+            consumeMessage(&msg);
+            printf("Pid: %d consume message: type = %02X | hash = %04X | size = %03d | extractedCount = %d\n", getpid(), msg.type, msg.hash, msg.size, extractedCount);
+            fflush(stdout);
+        }
+        sleep(5);
+    }
+    _exit(0);
+}
+
+void deleteConsumer(Stack* consumers)
+{
+    pid_t pid = pop(consumers);
+    if (pid > 0)
+    {
+        kill(pid, SIGTERM);
+        printf("Consumer (PID=%d) removed successfully. Current consumers count: %d\n", pid, consumers->size);
+        waitpid(pid, NULL, 0);
+    }
+}
+
+void consumeMessage(Message *msg)
+{
+    uint16_t msgHash = msg->hash;
+    msg->hash = 0;
+    uint16_t checkSum = calculateHash(msg);
+    if (msgHash != checkSum)
+    {
+        fprintf(stderr, "checkSum = %X not equal msgHash = %X\n", checkSum, msgHash);
+    }
+    msg->hash = msgHash;
+}
+
+
+Файл consumer.h
+
+#pragma once
+
+#include "queue.h"
+#include "stack.h"
+
+void createConsumer(Stack* consumers, int* semId);
+void deleteConsumer(Stack* consumers);
+
+void consumeMessage(Message *msg);
+
+
+Файл producer.c
+
+#define _XOPEN_SOURCE 500
+
+#include "producer.h"
+#include <signal.h>
+#include <errno.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <time.h>
+
+extern MessageQueue* queue;
+static volatile sig_atomic_t stopProducer = 0;
+
+static void producerSignalHandler(int signo)
+{
+    (void)signo;
+    stopProducer = 1;
+}
+
+static void initProducerSignals(void)
+{
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = producerSignalHandler;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
+}
+
+void createProducer(Stack* producers, int* semId)
+{
+	fflush(stdout);
+	pid_t producer = fork();
+	switch (producer)
+    {
+        case 0:
+            break;
+        case -1:
+            perror("fork");
+            exit(errno);
+        default:
+			push(producers, producer);
+            printf("Producer (PID=%d) created successfully. Current producers count: %d\n", producer, producers->size);
+            return;
+    }
+
+    int addedCount;
+    Message msg;
+    srand((unsigned int)(time(NULL) ^ getpid()));
+    initProducerSignals();
+
+    while (!stopProducer)
+    {
+        produceMessage(&msg);
+        if (semTryDown(semId, FREE_SLOTS_SEM) != 0)
+        {
+            usleep(100000);
+            continue;
+        }
+        if (semTryDown(semId, MUTEX_SEM) != 0)
+        {
+            semUp(semId, FREE_SLOTS_SEM);
+            usleep(100000);
+            continue;
+        }
+        addedCount = putMessage(&msg);
+        semUp(semId, MUTEX_SEM);
+        if (addedCount >= 0)
+        {
+            semUp(semId, QUEUED_ITEMS_SEM);
+        }
+        else
+        {
+            semUp(semId, FREE_SLOTS_SEM);
+        }
+
+        if (addedCount >= 0)
+        {
+            printf("Pid: %d produce message: type = %02X | hash = %04X | size = %03d | addedCount = %d\n", getpid(), msg.type, msg.hash, msg.size, addedCount);
+            fflush(stdout);
+        }
+
+        sleep(5);
+    }
+    _exit(0);
+}
+
+void deleteProducer(Stack* producers)
+{
+    pid_t pid = pop(producers);
+    if (pid > 0)
+    {
+        kill(pid, SIGTERM);
+        printf("Producer (PID=%d) removed successfully. Current producers count: %d\n", pid, producers->size);
+        waitpid(pid, NULL, 0);
+    }
+}
+
+void produceMessage(Message* msg)
+{
+    size_t alignedSize;
+
+    memset(msg, 0, sizeof(Message));
+
+    msg->type = (uint8_t)(rand() % 256);
+    msg->size = (uint8_t)(rand() % 256);
+    alignedSize = getAlignedDataLength(msg);
+
+    for (size_t i = 0; i < alignedSize; ++i)
+    {
+        msg->data[i] = (uint8_t)(rand() % 256);
+    }
+    msg->hash = 0;
+    msg->hash = calculateHash(msg);
+}
+
+
+Файл producer.h
+
+#pragma once
+
+#include "queue.h"
+#include "stack.h"
+
+void createProducer(Stack* producers, int* semId);
+void deleteProducer(Stack* producers);
+
+void produceMessage(Message *msg);
+
+
+Файл queue.c
+
+#include "queue.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/sem.h>
+#include <errno.h>
+#include <unistd.h>
+
+
+extern MessageQueue* queue;
+
+size_t getMessageDataLength(const Message* msg)
+{
+    return (size_t)msg->size + 1U;
+}
+
+size_t getAlignedDataLength(const Message* msg)
+{
+    size_t dataLength = getMessageDataLength(msg);
+    return ((dataLength + 3U) / 4U) * 4U;
+}
+
+uint16_t calculateHash(const Message* msg)
+{
+    Message normalized = *msg;
+    const uint8_t* bytes = (const uint8_t*)&normalized;
+    uint16_t hash = 0;
+    size_t meaningfulLength = offsetof(Message, data) + getMessageDataLength(&normalized);
+
+    normalized.hash = 0;
+
+
+
+    for (size_t i = 0; i < meaningfulLength; ++i) {
+        hash = (hash * 33) ^ bytes[i];
+    }
+    return hash;
+}
+
+MessageQueue initQueue(void)
+{
+	MessageQueue queue;
+
+    queue.addedCount = 0;
+    queue.extractedCount = 0;
+    queue.messageCount = 0;
+    queue.freeCount = MAX_MESSAGES;
+    queue.head = 0;
+    queue.tail = 0;
+    queue.freeTop = MAX_MESSAGES;
+    for (int i = 0; i < MAX_MESSAGES; ++i)
+    {
+        queue.buffer[i] = NULL;
+        queue.freeIndexes[i] = MAX_MESSAGES - i - 1;
+    }
+    memset(queue.storage, 0, sizeof(queue.storage));
+    memset(queue.buffer, 0, sizeof(queue.buffer));
+    return queue;
+}
+
+int putMessage(Message* msg)
+{
+    if (queue->freeTop == 0)
+    {
+        return -1;
+    }
+
+    int freeIndex = queue->freeIndexes[queue->freeTop - 1];
+    --queue->freeTop;
+    queue->storage[freeIndex] = *msg;
+
+    if (queue->head == MAX_MESSAGES)
+    {
+        queue->head = 0;
+    }
+    queue->buffer[queue->head] = &queue->storage[freeIndex];
+    ++queue->head;
+    ++queue->messageCount;
+    --queue->freeCount;
+    ++queue->addedCount;
+    return queue->addedCount;
+}
+
+int getMessage(Message* msg)
+{
+    if (queue->tail == MAX_MESSAGES)
+    {
+        queue->tail = 0;
+    }
+
+    Message* queuedMessage = queue->buffer[queue->tail];
+    if (queuedMessage == NULL)
+    {
+        return -1;
+    }
+
+    *msg = *queuedMessage;
+    queue->buffer[queue->tail] = NULL;
+
+    int freeIndex = (int)(queuedMessage - queue->storage);
+    if (queue->freeTop < MAX_MESSAGES)
+    {
+        queue->freeIndexes[queue->freeTop] = freeIndex;
+        ++queue->freeTop;
+    }
+
+    ++queue->tail;
+    --queue->messageCount;
+    ++queue->freeCount;
+    ++queue->extractedCount;
+
+    return queue->extractedCount;
+}
+
+void semDown(int* semId, int semNum)
+{
+    struct sembuf op = {semNum, -1, 0};
+    if (semop(*semId, &op, 1))
+    {
+        perror("semop down");
+        exit(EXIT_FAILURE);
+    }
+}
+
+int semTryDown(int* semId, int semNum)
+{
+    struct sembuf op = {semNum, -1, IPC_NOWAIT};
+    if (semop(*semId, &op, 1) == 0)
+    {
+        return 0;
+    }
+    if (errno == EAGAIN || errno == EINTR)
+    {
+        return 1;
+    }
+
+    perror("semop try down");
+    exit(EXIT_FAILURE);
+}
+
+void semUp(int* semId, int semNum)
+{
+    struct sembuf op = {semNum, 1, 0};
+    if (semop(*semId, &op, 1))
+    {
+        perror("semop up");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+Файл queue.h
+
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
+
+#define MAX_DATA (((256 + 3) / 4) * 4)
+#define MAX_MESSAGES 100
+
+#define MUTEX_SEM 0
+#define FREE_SLOTS_SEM 1
+#define QUEUED_ITEMS_SEM 2
+
+typedef struct __attribute__((packed))
+{
+    uint8_t type;
+    uint16_t hash;
+    uint8_t size;
+    uint8_t data[MAX_DATA];
+} Message;
+
+_Static_assert(offsetof(Message, type) == 0, "Message.type must be at offset 0");
+_Static_assert(offsetof(Message, hash) == 1, "Message.hash must be at offset 1");
+_Static_assert(offsetof(Message, size) == 3, "Message.size must be at offset 3");
+_Static_assert(offsetof(Message, data) == 4, "Message.data must be at offset 4");
+
+typedef struct
+{
+    int addedCount;
+    int extractedCount;
+    int messageCount;
+    int freeCount;
+    int head;
+    int tail;
+    int freeTop;
+    Message* buffer[MAX_MESSAGES];
+    Message storage[MAX_MESSAGES];
+    int freeIndexes[MAX_MESSAGES];
+} MessageQueue;
+
+size_t getMessageDataLength(const Message* msg);
+size_t getAlignedDataLength(const Message* msg);
+uint16_t calculateHash(const Message* msg);
+MessageQueue initQueue(void);
+
+int putMessage(Message* msg);
+int getMessage(Message* msg);
+
+void semDown(int* semId, int semNum);
+int semTryDown(int* semId, int semNum);
+void semUp(int* semId, int semNum);
+
+
+Файл semaphores.c
+
+#define _XOPEN_SOURCE 500
+
+#include "semaphores.h"
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+union semun
+{
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+};
+
+extern MessageQueue* queue;
+
+void initSemaphores(int* semId)
+{
+	int shmid = shmget(SHM_KEY, sizeof(MessageQueue), SHM_FLAGS);
+    if (shmid == -1)
+    {
+        perror("shmget");
+        exit(errno);
+    }
+
+    queue = (MessageQueue*)shmat(shmid, NULL, 0);
+    if (queue == (void*)-1)
+    {
+        perror("shmat");
+        exit(errno);
+    }
+    *queue = initQueue();
+
+    *semId = semget(SEM_KEY, 3, SEM_FLAGS);
+    if (*semId == -1)
+    {
+        perror("semget");
+        exit(errno);
+    }
+
+    union semun arg;
+
+    arg.val = 1;
+    if (semctl(*semId, MUTEX_SEM, SETVAL, arg) == -1)
+    {
+        perror("semctl mutex");
+        exit(errno);
+    }
+
+
+    arg.val = MAX_MESSAGES;
+    if (semctl(*semId, FREE_SLOTS_SEM, SETVAL, arg) == -1)
+    {
+        perror("semctl free_space");
+        exit(errno);
+    }
+
+
+    arg.val = 0;
+    if (semctl(*semId, QUEUED_ITEMS_SEM, SETVAL, arg) == -1)
+    {
+        perror("semctl items");
+        exit(errno);
+    }
+}
+
+void deleteSemaphores(Stack* producers, Stack* consumers, int* semId)
+{
+	while (producers->size != 0)
+	{
+		pid_t pid = pop(producers);
+		if (pid > 0)
+		{
+			kill(pid, SIGTERM);
+			waitpid(pid, NULL, 0);
+		}
+	}
+	while (consumers->size != 0)
+	{
+		pid_t pid = pop(consumers);
+		if (pid > 0)
+		{
+			kill(pid, SIGTERM);
+			waitpid(pid, NULL, 0);
+		}
+	}
+
+	int shmid = shmget(SHM_KEY, 0, 0);
+	if (queue != NULL && queue != (void*)-1)
+	{
+        shmdt(queue);
+        queue = NULL;
+    }
+
+	if (shmid != -1)
+	{
+		shmctl(shmid, IPC_RMID, NULL);
+	}
+	if (*semId != -1)
+	{
+		semctl(*semId, 0, IPC_RMID);
+		*semId = -1;
+	}
+}
+
+
+Файл semaphores.h
+
+#pragma once
+
+#include <sys/ipc.h>
+
+#include "queue.h"
+#include "stack.h"
+
+#define SHM_KEY 0x1234
+#define SEM_KEY 0x5678
+#define SHM_FLAGS (IPC_CREAT | 0600)
+#define SEM_FLAGS (IPC_CREAT | 0600)
+
+void initSemaphores(int* semId);
+void deleteSemaphores(Stack* producers, Stack* consumers, int* semId);
+
+
+Файл stack.c
+
+#define _XOPEN_SOURCE 500
+
+#include "stack.h"
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+Stack initStack(void)
+{
+	Stack stack;
+
+	stack.head = NULL;
+	stack.size = 0;
+
+	return stack;
+}
+
+void push(Stack* stack, pid_t child)
+{
+	struct StackElem* elem = (struct StackElem*)malloc(sizeof(struct StackElem));
+	if(elem == NULL)
+	{
+		perror("Can't allocate memory");
+		exit(1);
+	}
+
+	elem->value = child;
+	elem->next = stack->head;
+	stack->head = elem;
+	++stack->size;
+}
+
+pid_t pop(Stack* stack)
+{
+	if(stack->size == 0)
+	{
+		printf("\nStack is empty\n\n");
+		return 0;
+	}
+
+	struct StackElem* temp = stack->head;
+	pid_t value = temp->value;
+	stack->head = stack->head->next;
+	temp->next = NULL;
+	free(temp);
+
+	--stack->size;
+
+	return value;
+}
+
+void clear(Stack* stack)
+{
+	while (stack->size != 0)
+	{
+		pid_t pid = pop(stack);
+		if (pid > 0)
+		{
+			kill(pid, SIGTERM);
+			waitpid(pid, NULL, 0);
+		}
+	}
+}
+
+
+Файл stack.h
+
+#pragma once
+
+#include <sys/types.h>
+
+struct StackElem
+{
+	pid_t value;
+	struct StackElem* next;
+};
+
+typedef struct
+{
+	struct StackElem* head;
+	int size;
+} Stack;
+
+Stack initStack(void);
+void push(Stack* stack, pid_t child);
+pid_t pop(Stack* stack);
+void clear(Stack* stack);
+
+
