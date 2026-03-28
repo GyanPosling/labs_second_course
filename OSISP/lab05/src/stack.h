@@ -9,6 +9,7 @@ typedef struct
     pthread_t thread;
     atomic_bool stopRequested;
     unsigned int seed;
+    int remainingMessages;
 } ThreadControl;
 
 typedef struct StackElem

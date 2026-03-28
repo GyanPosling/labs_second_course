@@ -99,10 +99,11 @@ void* producerSem(void* arg)
 
     printf("Producer %09" PRIuPTR ": Started.\n", threadToId(pthread_self()));
 
-    while (!threadShouldStop(control))
+    while (!threadShouldStop(control) && control->remainingMessages > 0)
     {
         int addedCount = 0;
         int queued = 0;
+        int remaining = 0;
         Message* message = produceMessage(&control->seed);
 
         while (!queued && !threadShouldStop(control))
@@ -125,15 +126,18 @@ void* producerSem(void* arg)
             addToQueueSem(message);
             addedCount = queueSem.addedCount;
             queued = 1;
+            --control->remainingMessages;
+            remaining = control->remainingMessages;
             pthread_mutex_unlock(&queueSem.mutex);
 
             sem_post(queueSem.filledSlots);
-            printf("Producer %09" PRIuPTR ": Added message (type = %02X, hash = %04X, size = %03u). Total Added: %d\n",
+            printf("Producer %09" PRIuPTR ": Added message (type = %02X, hash = %04X, size = %03u). Total Added: %d. Remaining personal limit: %d\n",
                    threadToId(pthread_self()),
                    message->type,
                    message->hash,
                    (unsigned)message->size,
-                   addedCount);
+                   addedCount,
+                   remaining);
         }
 
         if (!queued)
@@ -154,10 +158,11 @@ void* producerCond(void* arg)
 
     printf("Producer %09" PRIuPTR ": Started.\n", threadToId(pthread_self()));
 
-    while (!threadShouldStop(control))
+    while (!threadShouldStop(control) && control->remainingMessages > 0)
     {
         int addedCount = 0;
         int queued = 0;
+        int remaining = 0;
         Message* message = produceMessage(&control->seed);
 
         pthread_mutex_lock(&queueCond.mutex);
@@ -176,6 +181,8 @@ void* producerCond(void* arg)
             addToQueueCond(message);
             addedCount = queueCond.addedCount;
             queued = 1;
+            --control->remainingMessages;
+            remaining = control->remainingMessages;
             pthread_cond_signal(&queueCond.notEmpty);
         }
         pthread_mutex_unlock(&queueCond.mutex);
@@ -186,12 +193,13 @@ void* producerCond(void* arg)
             break;
         }
 
-        printf("Producer %09" PRIuPTR ": Added message (type = %02X, hash = %04X, size = %03u). Total Added: %d\n",
+        printf("Producer %09" PRIuPTR ": Added message (type = %02X, hash = %04X, size = %03u). Total Added: %d. Remaining personal limit: %d\n",
                threadToId(pthread_self()),
                message->type,
                message->hash,
                (unsigned)message->size,
-               addedCount);
+               addedCount,
+               remaining);
         pauseBetweenCycles(control);
     }
 

@@ -4,4 +4,4 @@
 
 void* consumerSem(void* arg);
 void* consumerCond(void* arg);
-void consumeMessage(const Message* message, int extractedCount);
+void consumeMessage(const Message* message, int extractedCount, int remaining);

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define MAX_DATA (((256 + 3) / 4) * 4)
-#define MAX_MESSAGES 100
+#define MAX_MESSAGES 10
 
 #define MUTEX_SEM 0
 #define FREE_SLOTS_SEM 1

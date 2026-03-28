@@ -15,6 +15,7 @@
 #include <time.h>
 
 #define INITIAL_QUEUE_CAPACITY 10
+#define PRODUCER_DEFAULT_MESSAGES 10
 #define MAX_THREADS 100
 #define STATUS_BOX_INNER_WIDTH 62
 #define STATUS_BAR_WIDTH 24
@@ -348,6 +349,7 @@ static void runLab(void (*initFunc)(int),
 
                 producer = pushStack(&producerThreads);
                 producer->seed = (unsigned int)rand();
+                producer->remainingMessages = PRODUCER_DEFAULT_MESSAGES;
                 if (pthread_create(&producer->thread, NULL, producerFunc, producer) != 0)
                 {
                     perror("Error creating producer thread");
@@ -370,6 +372,7 @@ static void runLab(void (*initFunc)(int),
 
                 consumer = pushStack(&consumerThreads);
                 consumer->seed = (unsigned int)rand();
+                consumer->remainingMessages = PRODUCER_DEFAULT_MESSAGES;
                 if (pthread_create(&consumer->thread, NULL, consumerFunc, consumer) != 0)
                 {
                     perror("Error creating consumer thread");

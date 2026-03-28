@@ -98,9 +98,10 @@ void* consumerSem(void* arg)
 
     printf("Consumer %09" PRIuPTR ": Started.\n", threadToId(pthread_self()));
 
-    while (!threadShouldStop(control))
+    while (!threadShouldStop(control) && control->remainingMessages > 0)
     {
         int extractedCount = 0;
+        int remaining = 0;
         Message* message;
 
         if (!waitForFilledSlotSem(control))
@@ -111,12 +112,14 @@ void* consumerSem(void* arg)
         pthread_mutex_lock(&queueSem.mutex);
         message = getFromQueueSem();
         extractedCount = queueSem.extractedCount;
+        --control->remainingMessages;
+        remaining = control->remainingMessages;
         pthread_mutex_unlock(&queueSem.mutex);
 
         sem_post(queueSem.emptySlots);
         processPendingShrinkSem();
 
-        consumeMessage(message, extractedCount);
+        consumeMessage(message, extractedCount, remaining);
         free(message);
         pauseBetweenCycles(control);
     }
@@ -130,9 +133,10 @@ void* consumerCond(void* arg)
 
     printf("Consumer %09" PRIuPTR ": Started.\n", threadToId(pthread_self()));
 
-    while (!threadShouldStop(control))
+    while (!threadShouldStop(control) && control->remainingMessages > 0)
     {
         int extractedCount = 0;
+        int remaining = 0;
         Message* message = NULL;
 
         pthread_mutex_lock(&queueCond.mutex);
@@ -149,6 +153,8 @@ void* consumerCond(void* arg)
 
         message = getFromQueueCond();
         extractedCount = queueCond.extractedCount;
+        --control->remainingMessages;
+        remaining = control->remainingMessages;
         processPendingShrinkCondLocked();
         if (queueCond.pendingShrink == 0)
         {
@@ -156,7 +162,7 @@ void* consumerCond(void* arg)
         }
         pthread_mutex_unlock(&queueCond.mutex);
 
-        consumeMessage(message, extractedCount);
+        consumeMessage(message, extractedCount, remaining);
         free(message);
         pauseBetweenCycles(control);
     }
@@ -164,7 +170,7 @@ void* consumerCond(void* arg)
     return NULL;
 }
 
-void consumeMessage(const Message* message, int extractedCount)
+void consumeMessage(const Message* message, int extractedCount, int remaining)
 {
     Message copy = *message;
     uint16_t expectedHash = copy.hash;
@@ -175,12 +181,13 @@ void consumeMessage(const Message* message, int extractedCount)
 
     if (expectedHash == actualHash)
     {
-        printf("Consumer %09" PRIuPTR ": Got message (type = %02X, hash = %04X, size = %03u). Total Extracted: %d\n",
+        printf("Consumer %09" PRIuPTR ": Got message (type = %02X, hash = %04X, size = %03u). Total Extracted: %d. Remaining personal limit: %d\n",
                threadToId(pthread_self()),
                copy.type,
                expectedHash,
                (unsigned)copy.size,
-               extractedCount);
+               extractedCount,
+               remaining);
     }
     else
     {

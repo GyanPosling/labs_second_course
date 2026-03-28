@@ -29,6 +29,7 @@ ThreadControl* pushStack(Stack* stack)
     control->thread = (pthread_t)0;
     atomic_init(&control->stopRequested, 0);
     control->seed = 0;
+    control->remainingMessages = 0;
 
     elem->control = control;
     elem->next = stack->head;
