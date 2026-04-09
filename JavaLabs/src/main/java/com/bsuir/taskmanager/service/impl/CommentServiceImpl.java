@@ -1,0 +1,86 @@
+package com.bsuir.taskmanager.service.impl;
+
+import com.bsuir.taskmanager.exception.CommentNotFoundException;
+import com.bsuir.taskmanager.exception.TaskNotFoundException;
+import com.bsuir.taskmanager.exception.UserNotFoundException;
+import com.bsuir.taskmanager.mapper.CommentMapper;
+import com.bsuir.taskmanager.model.dto.request.CommentRequest;
+import com.bsuir.taskmanager.model.dto.response.CommentResponse;
+import com.bsuir.taskmanager.model.entity.Comment;
+import com.bsuir.taskmanager.model.entity.Task;
+import com.bsuir.taskmanager.model.entity.User;
+import com.bsuir.taskmanager.repository.CommentRepository;
+import com.bsuir.taskmanager.repository.TaskRepository;
+import com.bsuir.taskmanager.repository.UserRepository;
+import com.bsuir.taskmanager.service.CommentService;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional(readOnly = true)
+@AllArgsConstructor
+public class CommentServiceImpl implements CommentService {
+    private final CommentRepository commentRepository;
+    private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
+    private final CommentMapper commentMapper;
+
+    @Override
+    public List<CommentResponse> findAll() {
+        return commentRepository.findAll().stream()
+                .map(commentMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public CommentResponse findById(Long id) {
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new CommentNotFoundException("Comment not found: " + id));
+        return commentMapper.toResponse(comment);
+    }
+
+    @Override
+    @Transactional
+    public CommentResponse create(CommentRequest request) {
+        Task task = getTask(request.getTaskId());
+        User author = getAuthor(request.getAuthorId());
+        Comment comment = commentMapper.fromRequest(request, task, author);
+        Comment saved = commentRepository.save(comment);
+        return commentMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public CommentResponse update(Long id, CommentRequest request) {
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new CommentNotFoundException("Comment not found: " + id));
+        Task task = getTask(request.getTaskId());
+        User author = getAuthor(request.getAuthorId());
+        comment.setText(request.getText());
+        comment.setTask(task);
+        comment.setAuthor(author);
+        Comment saved = commentRepository.save(comment);
+        return commentMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        if (!commentRepository.existsById(id)) {
+            throw new CommentNotFoundException("Comment not found: " + id);
+        }
+        commentRepository.deleteById(id);
+    }
+
+    private Task getTask(Long taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found: " + taskId));
+    }
+
+    private User getAuthor(Long authorId) {
+        return userRepository.findById(authorId)
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + authorId));
+    }
+}

@@ -6,3 +6,5 @@
 
 ## [Лабараторные по ОСИСП](https://github.com/GyanPosling/labsUni/tree/main/OSISP)
 
+## [Лабараторные по Java](https://github.com/GyanPosling/labsUni/tree/main/JavaLabs)
+
