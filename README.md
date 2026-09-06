@@ -1,10 +1,9 @@
-# Хранилище всех лабораторных работ за время обучения в БГУИР
+# Лабораторные работы
 
-## [Лабараторные по ОАиП на языке С](https://github.com/GyanPosling/labsUni/tree/main/CLabs)
+Главная ветка содержит только оглавление. Сами лабораторные разнесены по отдельным веткам.
 
-## [Лабараторные работы по ПНАяВУ на языке С++](https://github.com/GyanPosling/labsUni/tree/main/C%2B%2BLabs)
-
-## [Лабараторные по ОСИСП](https://github.com/GyanPosling/labsUni/tree/main/OSISP)
-
-## [Лабараторные по Java](https://github.com/GyanPosling/labsUni/tree/main/JavaLabs)
-
+- [Все лабораторные](https://github.com/GyanPosling/labsUni/tree/all-labs)
+- [C / ОАиП](https://github.com/GyanPosling/labsUni/tree/c-labs)
+- [C++ / ПНАЯВУ](https://github.com/GyanPosling/labsUni/tree/cpp-labs)
+- [Java](https://github.com/GyanPosling/labsUni/tree/java-labs)
+- [ОСиСП](https://github.com/GyanPosling/labsUni/tree/osisp)
