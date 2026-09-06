@@ -7,3 +7,4 @@
 - [C++ / ПНАЯВУ](https://github.com/GyanPosling/labsUni/tree/cpp-labs)
 - [Java](https://github.com/GyanPosling/labsUni/tree/java-labs)
 - [ОСиСП](https://github.com/GyanPosling/labsUni/tree/osisp)
+- [Интерфейсы и устройства вычислительной техники](https://github.com/GyanPosling/labsUni/tree/iuvt)
